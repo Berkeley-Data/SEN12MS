@@ -52,6 +52,15 @@ The file lists are available both in plain ASCII (.txt) format, as well as .pkl 
 In this folder, other utilities that can help to load, process, or analyze the data can be stored.
 - `Sen12MSOverview.ipynb`: this notebook analyzes the class distribution of the whole SEN12MS dataset and plots the individual ROIs onto a world map
 
+### Setup Weight & Biases Tracking 
+
+```
+export WANDB_API_KEY=<use your API key>
+export WANDB_ENTITY=cal-capstone
+export WANDB_PROJECT=SEN12MS
+#export WANDB_MODE=dryrun
+```
+
 ### classification  
 In this folder, you can find codes for image classification CNNs (e.g. ResNet and DenseNet models) aiming at single-label and multi-label scene classification. They were developed using Python 3.7.7 and using several packages (NumPy, Rasterio, Scikit-Learn, TensorboardX, Torch, TorchVision, TQDM). To install the packages run `pip install requirements.txt` with your development environment activated from the `classification` folder.
 
