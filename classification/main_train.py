@@ -26,6 +26,7 @@ from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
     Coverage_error, Ranking_loss, LabelAvgPrec_score
 
+import wandb
 
 #sec.2 (done)
     
@@ -87,6 +88,8 @@ parser.add_argument('--resume', '-r', type=str, default=None,
                     help='path to the pretrained weights file', )
 
 args = parser.parse_args()
+
+wandb.init(config=args)
 
 # -------------------- set directory for saving files -------------------------
 if args.exp_name:
@@ -252,6 +255,7 @@ def main():
 
 # ----------------------------- executing Train/Val. 
     # train network
+    wandb.watch(model, log="all")
     for epoch in range(start_epoch, args.epochs):
 
         print('Epoch {}/{}'.format(epoch, args.epochs - 1))
@@ -271,14 +275,16 @@ def main():
             'best_prec': best_acc
             }, is_best_acc, sv_name)
 
-    
-    
+        wandb.log({'epoch': epoch, 'micro_f1': micro_f1})
+
+
 def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, train_writer):
 
     lossTracker = MetricTracker()
-    
+
     # set model to train mode
     model.train()
+
 
     # main training loop
     for idx, data in enumerate(tqdm(trainloader, desc="training")):
@@ -312,6 +318,7 @@ def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, 
         lossTracker.update(loss.item(), numSample)
 
     train_writer.add_scalar("loss", lossTracker.avg, epoch)
+    wandb.log({'loss': lossTracker.avg, 'epoch': epoch})
 
     print('Train loss: {:.6f}'.format(lossTracker.avg))
 
@@ -418,6 +425,7 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda, val_writer):
             "labelAvgPrec" : labelAvgPrec
             }
 
+    wandb.run.summary.update(info)
     for tag, value in info.items():
         val_writer.add_scalar(tag, value, epoch)
 

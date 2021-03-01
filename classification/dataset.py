@@ -19,7 +19,21 @@ S2_BANDS_RGB = [2, 3, 4] # B(2),G(3),R(4)
 # util function for reading s2 data
 def load_s2(path, imgTransform, s2_band): 
     bands_selected = s2_band
+    ############## test ############
+    path = path.strip()
+    """
+    #with rasterio.open('/workspace/app/data/sen12ms/ROIs1158_spring/s2_101/ROIs1158_spring_s2_101_p138.tif') as src:
+    print("RasterIO Loading file ", ' /workspace/app/data/sen12ms/ROIs1970_fall/s2_122/ROIs1970_fall_s2_122_p130.tif')
+    with rasterio.open('/workspace/app/data/sen12ms/ROIs1970_fall/s2_122/ROIs1970_fall_s2_122_p130.tif') as src:
+        print(src.width, src.height)
+    print(src.crs)
+    print(src.transform)
+    print(src.count)
+    print(src.indexes)
+    """
+    #################################
     with rasterio.open(path) as data:
+        #print("Reading data for band ", bands_selected, "path ", path)
         s2 = data.read(bands_selected)
     s2 = s2.astype(np.float32)
     if not imgTransform:
@@ -236,11 +250,11 @@ class SEN12MS(data.Dataset):
             pbar.set_description("[Load]")
             
             if subset == "train":
-                file =os.path.join(ls_dir, 'train_list.pkl')
+                file =os.path.join(ls_dir, 'train_list_updated.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 
             elif subset == "val":
-                file =os.path.join(ls_dir, 'val_list.pkl')
+                file =os.path.join(ls_dir, 'val_list_updated.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 
             else:
@@ -251,8 +265,7 @@ class SEN12MS(data.Dataset):
             broken_file = 'ROIs1868_summer_s2_146_p202.tif'
             if broken_file in sample_list:
                 sample_list.remove(broken_file)
-            
-            #
+
             pbar.set_description("[Load]")
             
             for s2_id in sample_list:
