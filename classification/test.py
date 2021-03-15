@@ -20,7 +20,7 @@ from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     Coverage_error, Ranking_loss, LabelAvgPrec_score, calssification_report, \
     conf_mat_nor, get_AA, multi_conf_mat, OA_multi
 
-
+import wandb
 
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
@@ -50,6 +50,7 @@ parser.add_argument('--num_workers',type=int, default=4,
 
 args = parser.parse_args()
 
+wandb.init(config=args)
 
 # -------------------------------- Main Program ------------------------------
 def main():
@@ -312,6 +313,7 @@ def main():
             "conf_mat": conf_mat,
             "AverageAcc": aa }
 
+    wandb.run.summary.update(info)
     print("saving metrics...")
     pkl.dump(info, open("test_scores.pkl", "wb"))
 

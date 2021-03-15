@@ -67,7 +67,8 @@ In this folder, you can find codes for image classification CNNs (e.g. ResNet an
 The files needed for training and evaluating SEN12MS-based classification models are described as follows:
 - `dataset.py`: This python script reads the data from SEN12MS and the probability label file. It converts the probability labels into single-label or multi-label annotations.
 - `main_train.py`: This python script is used to train the model. It requires several input arguments to specify the scenario for training (e.g. label type, simplified/original IGBP scheme, models, learning rate etc.). Here is an example of the input arguments:  
-`CUDA_VISIBLE_DEVICES=0 \  
+```
+CUDA_VISIBLE_DEVICES=0 \  
 python main_train.py \  
   --exp_name experiment_name \  
   --data_dir /work/share/sen12ms \  
@@ -82,16 +83,76 @@ python main_train.py \
   --batch_size 64 \  
   --num_workers 4 \  
   --epochs 100 \`  
+```
+
+  For example, the following training will take around 17 hours on p3.2
+ `main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 50` 
+  
 These arguments will be saved into a .txt file automatically. This .txt file can be used in the testing for reading the arguments. The `threshold` parameter is used to filter out the labels with lower probabilities. Note that this threshold has no influence on single-label classification. More explanation of the arguments is in the `main_train.py` file. Note that the probability label file and the split lists should be put under the same folder during training and testing. The script reads .pkl format instead of .txt files.
 - `test.py`: This python script is used to test the model. It is a semi-automatic script and reads the argument file generated in the training process to decide the label type, model type etc. However, it still requires user to input some basic arguments, such as the path of data directory. Here is an example of the input arguments:  
-`CUDA_VISIBLE_DEVICES=0 \  
+
+```
+CUDA_VISIBLE_DEVICES=0 \  
 python test.py \  
-  --config_file /home/single_DenseNet_RGB/logs/20201019_000519_arguments.txt \  
+  --config_file /home/single_DenseNet_RGB/logs/20201019_000519_arguments.txt \ 
   --data_dir /work/share/sen12ms \  
   --label_split_dir /home/labels_splits \  
   --checkpoint_pth /home/major_DenseNet_RGB/checkpoints/20201019_000519_model_best.pth \  
   --batch_size 64 \  
-  --num_workers 4 \`  
+  --num_workers 4 \
+```
+
+```
+python test.py \  
+  --config_file /home/single_DenseNet_RGB/logs/20201019_000519_arguments.txt \ 
+  --data_dir /workspace/app/data/sen12ms \  
+  --label_split_dir /workspace/app/splits \  
+  --checkpoint_pth /workspace/app/pretrained/soft-snowflake-3.pth \  
+  --batch_size 64 \  
+  --num_workers 4 \
+```
+
+```
+pip install torch torchvision torchaudio
+pip install scikit-learn
+
+
+PT_DIR=/workspace/app/supervised/single_label/single_DenseNet121_s2
+
+PT_DIR=/scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s2
+
+--config_file ${PT_DIR}/20201012_083914_arguments.txt  
+
+```
+
+`python classification/test.py  
+  --data_dir data/sen12ms/data   
+  --label_split_dir splits   
+  --checkpoint_pth ${PT_DIR}/20201012_083914_model_best.pth   
+  --batch_size 64 
+  --config_file ${PT_DIR}/20201012_083914_arguments.txt  
+  --num_workers 4`
+
+exp_name: major_DenseNet_s2
+data_dir: /work/share/sen12ms
+label_split_dir: /home/ge73vap/labels_splits
+use_s2: True
+use_s1: False
+use_RGB: False
+IGBP_simple: True
+label_type: major_vote
+threshold: 0.1
+model: DenseNet121
+lr: 0.001
+decay: 1e-05
+batch_size: 64
+num_workers: 4
+epochs: 100
+resume: None
+
+
+
+
 All other arguments will be read from the argument .txt file created when calling the training function.
 - `metrics.py`: This script contains several metrics used to evaluate single-label/multi-label classification test results.
 - `models/DenseNet.py`: This script contains several DenseNet models with different depth.

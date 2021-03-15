@@ -275,7 +275,8 @@ class SEN12MS(data.Dataset):
               "samples from the sen12ms subset", subset)
         
         # import lables as a dictionary
-        label_file = os.path.join(ls_dir,'IGBP_probability_labels.pkl')
+        # label_file = os.path.join(ls_dir,'IGBP_probability_labels.pkl')
+        label_file = os.path.join('labels','IGBP_probability_labels.pkl')
 
         a_file = open(label_file, "rb")
         self.labels = pkl.load(a_file)
