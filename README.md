@@ -133,6 +133,16 @@ PT_DIR=/scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s2
   --config_file ${PT_DIR}/20201012_083914_arguments.txt  
   --num_workers 4`
 
+
+
+```
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s1s2/20201007_185315_model_best.pth.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s1s2/20201007_185315_arguments.txt --num_workers 4 
+```
+
+
+
+
+
 exp_name: major_DenseNet_s2
 data_dir: /work/share/sen12ms
 label_split_dir: /home/ge73vap/labels_splits

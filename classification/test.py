@@ -50,8 +50,6 @@ parser.add_argument('--num_workers',type=int, default=4,
 
 args = parser.parse_args()
 
-wandb.init(config=args)
-
 # -------------------------------- Main Program ------------------------------
 def main():
     global args
@@ -65,7 +63,10 @@ def main():
         for line in f:
             (key, val) = line.split()
             config[(key[0:-1])] = val
-            
+
+    wandb.init(config=config)
+    wandb.config.update(args, allow_val_change=True)
+
     # Convert string to boolean
     boo_use_s1 = config['use_s1'] == 'True'
     boo_use_s2 = config['use_s2'] == 'True'
