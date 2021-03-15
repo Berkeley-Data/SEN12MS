@@ -64,9 +64,6 @@ def main():
             (key, val) = line.split()
             config[(key[0:-1])] = val
 
-    wandb.init(config=config)
-    wandb.config.update(args, allow_val_change=True)
-
     # Convert string to boolean
     boo_use_s1 = config['use_s1'] == 'True'
     boo_use_s2 = config['use_s2'] == 'True'
@@ -75,8 +72,13 @@ def main():
     
     # define label_type
     cf_label_type = config['label_type']
+    if cf_label_type == "major_vote":
+        cf_label_type = "single_label"
     assert cf_label_type in label_choices
-    
+
+    wandb.init(config=config)
+    wandb.config.update(args, allow_val_change=True)
+
     # define threshold 
     cf_threshold = float(config['threshold'])
     
