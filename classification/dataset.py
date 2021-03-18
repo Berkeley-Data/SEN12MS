@@ -236,11 +236,11 @@ class SEN12MS(data.Dataset):
             pbar.set_description("[Load]")
             
             if subset == "train":
-                file =os.path.join(ls_dir, 'train_list.pkl')
+                file =os.path.join(ls_dir, 'train_list_updated.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 
             elif subset == "val":
-                file =os.path.join(ls_dir, 'val_list.pkl')
+                file =os.path.join(ls_dir, 'val_list_updated.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 
             else:
@@ -251,8 +251,7 @@ class SEN12MS(data.Dataset):
             broken_file = 'ROIs1868_summer_s2_146_p202.tif'
             if broken_file in sample_list:
                 sample_list.remove(broken_file)
-            
-            #
+
             pbar.set_description("[Load]")
             
             for s2_id in sample_list:
@@ -275,8 +274,7 @@ class SEN12MS(data.Dataset):
               "samples from the sen12ms subset", subset)
         
         # import lables as a dictionary
-        # label_file = os.path.join(ls_dir,'IGBP_probability_labels.pkl')
-        label_file = os.path.join('labels','IGBP_probability_labels.pkl')
+        label_file = os.path.join(ls_dir,'IGBP_probability_labels.pkl')
 
         a_file = open(label_file, "rb")
         self.labels = pkl.load(a_file)

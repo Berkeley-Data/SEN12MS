@@ -12,7 +12,7 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
 import shutil 
 import sys
@@ -249,8 +249,8 @@ def main():
 
 
     # set up tensorboard logging
-    train_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'training'))
-    val_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'val'))
+    # train_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'training'))
+    # val_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'val'))
 
 
 # ----------------------------- executing Train/Val. 
@@ -261,8 +261,8 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.epochs - 1))
         print('-' * 10)
 
-        train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda, train_writer)
-        micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda, val_writer)
+        train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda)
+        micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda)
 
         is_best_acc = micro_f1 > best_acc
         best_acc = max(best_acc, micro_f1)
@@ -278,7 +278,7 @@ def main():
         wandb.log({'epoch': epoch, 'micro_f1': micro_f1})
 
 
-def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, train_writer):
+def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda):
 
     lossTracker = MetricTracker()
 
@@ -317,14 +317,14 @@ def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, 
         #
         lossTracker.update(loss.item(), numSample)
 
-    train_writer.add_scalar("loss", lossTracker.avg, epoch)
+    # train_writer.add_scalar("loss", lossTracker.avg, epoch)
     wandb.log({'loss': lossTracker.avg, 'epoch': epoch})
 
     print('Train loss: {:.6f}'.format(lossTracker.avg))
 
 
     
-def val(valloader, model, optimizer, label_type, epoch, use_cuda, val_writer):
+def val(valloader, model, optimizer, label_type, epoch, use_cuda):
 
     prec_score_ = Precision_score()
     recal_score_ = Recall_score()
@@ -427,7 +427,8 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda, val_writer):
 
     wandb.run.summary.update(info)
     for tag, value in info.items():
-        val_writer.add_scalar(tag, value, epoch)
+        wandb.log({tag: value, 'epoch': epoch})
+        # val_writer.add_scalar(tag, value, epoch)
 
     print('Validation microPrec: {:.6f} microF1: {:.6f} sampleF1: {:.6f} microF2: {:.6f} sampleF2: {:.6f}'.format(
             micro_prec,

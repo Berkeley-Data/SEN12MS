@@ -86,7 +86,17 @@ python main_train.py \
 ```
 
   For example, the following training will take around 17 hours on p3.2
- `main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 50` 
+ `CUDA_VISIBLE_DEVICES=0 main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 50` 
+ 
+ 
+```
+export WANDB_ENTITY=cal-capstone
+export WANDB_PROJECT=SEN12MS
+
+CUDA_VISIBLE_DEVICES=0 python main_train.py --exp_name sem12ms_baseline --data_dir /scratch/crguest/SEN12MS/data/sen12ms/data --label_split_dir /scratch/crguest/SEN12MS/splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 1
+
+```
+ 
   
 These arguments will be saved into a .txt file automatically. This .txt file can be used in the testing for reading the arguments. The `threshold` parameter is used to filter out the labels with lower probabilities. Note that this threshold has no influence on single-label classification. More explanation of the arguments is in the `main_train.py` file. Note that the probability label file and the split lists should be put under the same folder during training and testing. The script reads .pkl format instead of .txt files.
 - `test.py`: This python script is used to test the model. It is a semi-automatic script and reads the argument file generated in the training process to decide the label type, model type etc. However, it still requires user to input some basic arguments, such as the path of data directory. Here is an example of the input arguments:  
@@ -136,9 +146,18 @@ PT_DIR=/scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s2
 
 
 ```
-python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s1s2/20201007_185315_model_best.pth.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s1s2/20201007_185315_arguments.txt --num_workers 4 
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_RGB/20201005_034153_model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_RGB/20201005_034153_arguments.txt --num_workers 4 
 
-python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/single_label/single_ResNet50_RGB/20201006_114005_model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/single_label/single_ResNet50_RGB/20201006_114005_arguments.txt --num_workers 4 
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_arguments.txt --num_workers 4 
+
+
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824_arguments.txt --num_workers 4 
+
+
+
+
+
+
 
 ```
 
