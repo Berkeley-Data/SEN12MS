@@ -85,15 +85,15 @@ python main_train.py \
   --epochs 100 \`  
 ```
 
-  For example, the following training will take around 17 hours on p3.2
- `CUDA_VISIBLE_DEVICES=0 main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 50` 
+  For example, the following training will take around 17 hours on p3.2xlarge instance. 
+ `CUDA_VISIBLE_DEVICES=0 main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size full --epochs 50` 
  
  
 ```
 export WANDB_ENTITY=cal-capstone
 export WANDB_PROJECT=SEN12MS
 
-CUDA_VISIBLE_DEVICES=0 python main_train.py --exp_name sem12ms_baseline --data_dir /scratch/crguest/SEN12MS/data/sen12ms/data --label_split_dir /scratch/crguest/SEN12MS/splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --epochs 1
+CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size full --epochs 10 
 
 ```
  
@@ -112,77 +112,25 @@ python test.py \
   --num_workers 4 \
 ```
 
+download pretrained models from `s3://sen12ms/pretrained_sup`
 ```
-python test.py \  
-  --config_file /home/single_DenseNet_RGB/logs/20201019_000519_arguments.txt \ 
-  --data_dir /workspace/app/data/sen12ms \  
-  --label_split_dir /workspace/app/splits \  
-  --checkpoint_pth /workspace/app/pretrained/soft-snowflake-3.pth \  
-  --batch_size 64 \  
-  --num_workers 4 \
+## remove dryrun param
+aws s3 sync s3://sen12ms/pretrained_sup . --dryrun 
 ```
 
+Examples
 ```
-pip install torch torchvision torchaudio
-pip install scikit-learn
+# example 1
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_model_best.pth --batch_size 64 --config_file /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_arguments.txt --num_workers 4 
 
-
-PT_DIR=/workspace/app/supervised/single_label/single_DenseNet121_s2
-
-PT_DIR=/scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s2
-
---config_file ${PT_DIR}/20201012_083914_arguments.txt  
-
-```
-
-`python classification/test.py  
-  --data_dir data/sen12ms/data   
-  --label_split_dir splits   
-  --checkpoint_pth ${PT_DIR}/20201012_083914_model_best.pth   
-  --batch_size 64 
-  --config_file ${PT_DIR}/20201012_083914_arguments.txt  
-  --num_workers 4`
-
-
-
-```
-python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_RGB/20201005_034153_model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_RGB/20201005_034153_arguments.txt --num_workers 4 
-
-python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_arguments.txt --num_workers 4 
-
-
+# example 2
 python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824_arguments.txt --num_workers 4 
 
+PT_DIR=/workspace/app/supervised/single_label/single_DenseNet121_s2
+# PT_DIR=/scratch/crguest/SEN12MS/pretrained/single_label/single_DenseNet121_s2
 
-
-
-
-
-
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth ${PT_DIR}/20201012_083914_model_best.pth --batch_size 64 --config_file ${PT_DIR}/20201012_083914_arguments.txt --num_workers 4
 ```
-
-
-
-
-
-exp_name: major_DenseNet_s2
-data_dir: /work/share/sen12ms
-label_split_dir: /home/ge73vap/labels_splits
-use_s2: True
-use_s1: False
-use_RGB: False
-IGBP_simple: True
-label_type: major_vote
-threshold: 0.1
-model: DenseNet121
-lr: 0.001
-decay: 1e-05
-batch_size: 64
-num_workers: 4
-epochs: 100
-resume: None
-
-
 
 
 All other arguments will be read from the argument .txt file created when calling the training function.

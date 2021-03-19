@@ -49,7 +49,8 @@ parser.add_argument('--data_dir', type=str, default=None,
                     help='path to SEN12MS dataset')
 parser.add_argument('--label_split_dir', type=str, default=None,
                     help="path to label data and split list")
-
+parser.add_argument('--data_size', type=str, default="full",
+                    help="64, 128, 256, 1000, 1024, full")
 # input/output
 parser.add_argument('--use_s2', action='store_true', default=False,
                     help='use sentinel-2 bands')
@@ -149,13 +150,13 @@ def main():
                             imgTransform=imgTransform, 
                             label_type=label_type, threshold=args.threshold, subset="train", 
                             use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                            IGBP_s=args.IGBP_simple)
+                            IGBP_s=args.IGBP_simple, data_size=args.data_size)
     
     val_dataGen = SEN12MS(args.data_dir, args.label_split_dir, 
                           imgTransform=imgTransform, 
                           label_type=label_type, threshold=args.threshold, subset="val", 
                           use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                          IGBP_s=args.IGBP_simple)    
+                          IGBP_s=args.IGBP_simple, data_size=args.data_size)
     
     
     # number of input channels
