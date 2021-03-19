@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152
+from models.ResNet import ResNet50, ResNet101, ResNet152, Moco
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -32,7 +32,7 @@ import wandb
     
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201']
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -189,7 +189,7 @@ def main():
         numCls = 17
     
     print('num_class: ', numCls)
-    
+
     # define model
     if args.model == 'VGG16':
         model = VGG16(n_inputs, numCls)
@@ -210,11 +210,15 @@ def main():
     elif args.model == 'DenseNet169':
         model = DenseNet169(n_inputs, numCls)
     elif args.model == 'DenseNet201':
-        model = DenseNet201(n_inputs, numCls)     
+        model = DenseNet201(n_inputs, numCls)
+    elif args.model == 'Moco':
+        model = ResNet50(n_inputs, numCls)
+        model.load_state_dict(torch.load(args.resume)["state_dict"])
+        args.resume = None
     else:
         raise NameError("no model")
 
-    
+
     # move model to GPU if is available
     if use_cuda:
         model = model.cuda() 
@@ -226,7 +230,7 @@ def main():
         lossfunc = torch.nn.CrossEntropyLoss()
 
     
-    # set up optimizer 
+    # set up optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     best_acc = 0
