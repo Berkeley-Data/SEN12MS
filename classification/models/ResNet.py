@@ -125,10 +125,11 @@ class ResNet50(nn.Module):
 
 # [todo] Taeil: need to match the moco
 class Moco(nn.Module):
-    def __init__(self, n_inputs = 12, numCls = 17):
+    def __init__(self, mocoModel, n_inputs = 12, numCls = 17):
         super().__init__()
 
         resnet = models.resnet50(pretrained=False)
+        resnet.load_state_dict(mocoModel["state_dict"])
 
         self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(

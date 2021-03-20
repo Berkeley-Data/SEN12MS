@@ -18,13 +18,13 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser(
-        description='This script extracts the backbone from a OpenSelfSup moco model.')
+        description='This script extracts/converts the backbone from a OpenSelfSup moco model')
 
     parser.add_argument('-i', '--inputmodel', type=str,
                         help="Input model file name")
 
     parser.add_argument('-bb', '--backbone', default=True, type=str2bool,
-                        help="whether to extract backbone or encoder keys?")
+                        help="whether to extracts/converts backbone or extracts encoder keys?")
 
     args = parser.parse_args()
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     output_file_name = args.inputmodel.split('.')[0]
 
     if args.backbone == True:
-        output_file_name = output_file_name+'_backbone.pth'
+        output_file_name = output_file_name+'_bb_converted.pth'
     else:
         output_file_name = output_file_name + '_queryencoder.pth'
 

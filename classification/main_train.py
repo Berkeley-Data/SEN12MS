@@ -93,7 +93,12 @@ args = parser.parse_args()
 wandb.init(config=args)
 
 # -------------------- set directory for saving files -------------------------
-if args.exp_name:
+
+if wandb.run is not None:
+    # save to wandb run dir for tracking and saving the models
+    checkpoint_dir = wandb.run.dir
+    logs_dir = wandb.run.dir
+elif args.exp_name:
     checkpoint_dir = os.path.join('./', args.exp_name, 'checkpoints')
     logs_dir = os.path.join('./', args.exp_name, 'logs')
 else:
@@ -212,8 +217,7 @@ def main():
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
     elif args.model == 'Moco':
-        model = ResNet50(n_inputs, numCls)
-        model.load_state_dict(torch.load(args.resume)["state_dict"])
+        model = Moco(torch.load(args.resume), n_inputs, numCls)
         args.resume = None
     else:
         raise NameError("no model")
