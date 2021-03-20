@@ -91,7 +91,7 @@ if __name__ == "__main__":
     if args.backbone == True:
         output_file_name = output_file_name+'_bb_converted.pth'
     else:
-        output_file_name = output_file_name + '_queryencoder.pth'
+        output_file_name = output_file_name + '_qe_converted.pth'
 
     with open(output_file_name, "wb") as f:
         torch.save(res, f)
