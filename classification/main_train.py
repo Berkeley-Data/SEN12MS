@@ -87,6 +87,12 @@ parser.add_argument('--epochs', type=int, default=100,
                     help='number of training epochs (default: 100)')
 parser.add_argument('--resume', '-r', type=str, default=None,
                     help='path to the pretrained weights file', )
+parser.add_argument('--pt_dir', '-pd', type=str, default=None,
+                    help='directory for pretrained model', )
+parser.add_argument('--pt_name', '-pn', type=str, default=None,
+                    help='model name without extension', )
+parser.add_argument('--pt_type', '-pt', type=str, default=None,
+                    help='model name without extension', )
 
 args = parser.parse_args()
 
@@ -217,8 +223,9 @@ def main():
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
     elif args.model == 'Moco':
-        model = Moco(torch.load(args.resume), n_inputs, numCls)
-        args.resume = None
+        pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        assert os.path.exists(pt_path)
+        model = Moco(torch.load(pt_path), n_inputs, numCls)
     else:
         raise NameError("no model")
 
