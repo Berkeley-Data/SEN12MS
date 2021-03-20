@@ -3,6 +3,7 @@
 
 import sys
 import torch
+from torchvision import models
 
 if __name__ == "__main__":
     input = sys.argv[1]
@@ -33,10 +34,14 @@ if __name__ == "__main__":
         newmodel[k] = v.detach().numpy()
 
     res = {
-        "model": newmodel,
+        # [todo] the name of state_dict should match the one
+        "state_dict": newmodel,
         "__author__": "OpenSelfSup",
         "matching_heuristics": True
     }
+
+    resnet = models.resnet50(pretrained=False)
+    resnet.load_state_dict(newmodel)
 
     assert sys.argv[2].endswith('.pth')
     with open(sys.argv[2], "wb") as f:

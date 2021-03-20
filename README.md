@@ -85,25 +85,24 @@ python main_train.py \
   --epochs 100 \`  
 ```
 
-#### WIP
-  For example, the following training will take around 17 hours on p3.2xlarge instance. 
+For example, the following training will take around 17 hours on p3.2xlarge instance. 
  `CUDA_VISIBLE_DEVICES=0 main_train.py --exp_name sem12ms_baseline --data_dir /workspace/app/data/sen12ms --label_split_dir /workspace/app/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size full --epochs 50` 
  
 ```
 export WANDB_ENTITY=cal-capstone
 export WANDB_PROJECT=SEN12MS
 
-CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size full --epochs 10 --resume /home/ubuntu/SEN12MS/pretrained/moco/silvery-oath7-2rr3864e.pth
+CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model ResNet50 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 1
 
 ```
  
  #### finetune (training from pre-trained model)   :anguished:
  ```
- CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model DenseNet121 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 1 --resume /home/ubuntu/SEN12MS/pretrained/moco/silvery-oath7-2rr3864e.pth
+ CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 1 --resume /home/ubuntu/SEN12MS/pretrained/moco/silvery-oath7-2rr3864e.pth
  
  ```
  
-  
+ 
 These arguments will be saved into a .txt file automatically. This .txt file can be used in the testing for reading the arguments. The `threshold` parameter is used to filter out the labels with lower probabilities. Note that this threshold has no influence on single-label classification. More explanation of the arguments is in the `main_train.py` file. Note that the probability label file and the split lists should be put under the same folder during training and testing. The script reads .pkl format instead of .txt files.
 - `test.py`: This python script is used to test the model. It is a semi-automatic script and reads the argument file generated in the training process to decide the label type, model type etc. However, it still requires user to input some basic arguments, such as the path of data directory. Here is an example of the input arguments:  
 
@@ -123,6 +122,8 @@ download pretrained models from `s3://sen12ms/pretrained_sup`
 ## remove dryrun param
 aws s3 sync s3://sen12ms/pretrained_sup . --dryrun 
 ```
+
+convert models key 
 
 Examples
 ```
