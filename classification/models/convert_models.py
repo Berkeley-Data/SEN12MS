@@ -4,6 +4,9 @@ import torch
 import argparse
 from torchvision import models
 
+# Command: python convert_models.py -i <path to the moco model xyz.pth> -bb True
+# -bb True indicates to extract backbone weights. -bb False indicates to extract encoder query weights
+
 if __name__ == "__main__":
 
     def str2bool(v):
