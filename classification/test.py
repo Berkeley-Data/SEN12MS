@@ -20,7 +20,7 @@ from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     Coverage_error, Ranking_loss, LabelAvgPrec_score, calssification_report, \
     conf_mat_nor, get_AA, multi_conf_mat, OA_multi
 
-
+import wandb
 
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
@@ -50,7 +50,6 @@ parser.add_argument('--num_workers',type=int, default=4,
 
 args = parser.parse_args()
 
-
 # -------------------------------- Main Program ------------------------------
 def main():
     global args
@@ -64,7 +63,7 @@ def main():
         for line in f:
             (key, val) = line.split()
             config[(key[0:-1])] = val
-            
+
     # Convert string to boolean
     boo_use_s1 = config['use_s1'] == 'True'
     boo_use_s2 = config['use_s2'] == 'True'
@@ -73,8 +72,13 @@ def main():
     
     # define label_type
     cf_label_type = config['label_type']
+    if cf_label_type == "major_vote":
+        cf_label_type = "single_label"
     assert cf_label_type in label_choices
-    
+
+    wandb.init(config=config)
+    wandb.config.update(args, allow_val_change=True)
+
     # define threshold 
     cf_threshold = float(config['threshold'])
     
@@ -312,6 +316,7 @@ def main():
             "conf_mat": conf_mat,
             "AverageAcc": aa }
 
+    wandb.run.summary.update(info)
     print("saving metrics...")
     pkl.dump(info, open("test_scores.pkl", "wb"))
 

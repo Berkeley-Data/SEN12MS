@@ -12,7 +12,7 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
 import shutil 
 import sys
@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152
+from models.ResNet import ResNet50, ResNet101, ResNet152, Moco
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -32,7 +32,7 @@ import wandb
     
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201']
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -49,7 +49,8 @@ parser.add_argument('--data_dir', type=str, default=None,
                     help='path to SEN12MS dataset')
 parser.add_argument('--label_split_dir', type=str, default=None,
                     help="path to label data and split list")
-
+parser.add_argument('--data_size', type=str, default="full",
+                    help="64, 128, 256, 1000, 1024, full")
 # input/output
 parser.add_argument('--use_s2', action='store_true', default=False,
                     help='use sentinel-2 bands')
@@ -86,13 +87,24 @@ parser.add_argument('--epochs', type=int, default=100,
                     help='number of training epochs (default: 100)')
 parser.add_argument('--resume', '-r', type=str, default=None,
                     help='path to the pretrained weights file', )
+parser.add_argument('--pt_dir', '-pd', type=str, default=None,
+                    help='directory for pretrained model', )
+parser.add_argument('--pt_name', '-pn', type=str, default=None,
+                    help='model name without extension', )
+parser.add_argument('--pt_type', '-pt', type=str, default=None,
+                    help='model name without extension', )
 
 args = parser.parse_args()
 
 wandb.init(config=args)
 
 # -------------------- set directory for saving files -------------------------
-if args.exp_name:
+
+if wandb.run is not None:
+    # save to wandb run dir for tracking and saving the models
+    checkpoint_dir = wandb.run.dir
+    logs_dir = wandb.run.dir
+elif args.exp_name:
     checkpoint_dir = os.path.join('./', args.exp_name, 'checkpoints')
     logs_dir = os.path.join('./', args.exp_name, 'logs')
 else:
@@ -149,13 +161,13 @@ def main():
                             imgTransform=imgTransform, 
                             label_type=label_type, threshold=args.threshold, subset="train", 
                             use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                            IGBP_s=args.IGBP_simple)
+                            IGBP_s=args.IGBP_simple, data_size=args.data_size)
     
     val_dataGen = SEN12MS(args.data_dir, args.label_split_dir, 
                           imgTransform=imgTransform, 
                           label_type=label_type, threshold=args.threshold, subset="val", 
                           use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                          IGBP_s=args.IGBP_simple)    
+                          IGBP_s=args.IGBP_simple, data_size=args.data_size)
     
     
     # number of input channels
@@ -188,7 +200,7 @@ def main():
         numCls = 17
     
     print('num_class: ', numCls)
-    
+
     # define model
     if args.model == 'VGG16':
         model = VGG16(n_inputs, numCls)
@@ -209,11 +221,15 @@ def main():
     elif args.model == 'DenseNet169':
         model = DenseNet169(n_inputs, numCls)
     elif args.model == 'DenseNet201':
-        model = DenseNet201(n_inputs, numCls)     
+        model = DenseNet201(n_inputs, numCls)
+    elif args.model == 'Moco':
+        pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        assert os.path.exists(pt_path)
+        model = Moco(torch.load(pt_path), n_inputs, numCls)
     else:
         raise NameError("no model")
 
-    
+
     # move model to GPU if is available
     if use_cuda:
         model = model.cuda() 
@@ -225,7 +241,7 @@ def main():
         lossfunc = torch.nn.CrossEntropyLoss()
 
     
-    # set up optimizer 
+    # set up optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     best_acc = 0
@@ -249,8 +265,8 @@ def main():
 
 
     # set up tensorboard logging
-    train_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'training'))
-    val_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'val'))
+    # train_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'training'))
+    # val_writer = SummaryWriter(os.path.join(logs_dir, 'runs', sv_name, 'val'))
 
 
 # ----------------------------- executing Train/Val. 
@@ -261,8 +277,8 @@ def main():
         print('Epoch {}/{}'.format(epoch, args.epochs - 1))
         print('-' * 10)
 
-        train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda, train_writer)
-        micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda, val_writer)
+        train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda)
+        micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda)
 
         is_best_acc = micro_f1 > best_acc
         best_acc = max(best_acc, micro_f1)
@@ -278,7 +294,7 @@ def main():
         wandb.log({'epoch': epoch, 'micro_f1': micro_f1})
 
 
-def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, train_writer):
+def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda):
 
     lossTracker = MetricTracker()
 
@@ -317,14 +333,14 @@ def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda, 
         #
         lossTracker.update(loss.item(), numSample)
 
-    train_writer.add_scalar("loss", lossTracker.avg, epoch)
+    # train_writer.add_scalar("loss", lossTracker.avg, epoch)
     wandb.log({'loss': lossTracker.avg, 'epoch': epoch})
 
     print('Train loss: {:.6f}'.format(lossTracker.avg))
 
 
     
-def val(valloader, model, optimizer, label_type, epoch, use_cuda, val_writer):
+def val(valloader, model, optimizer, label_type, epoch, use_cuda):
 
     prec_score_ = Precision_score()
     recal_score_ = Recall_score()
@@ -427,7 +443,8 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda, val_writer):
 
     wandb.run.summary.update(info)
     for tag, value in info.items():
-        val_writer.add_scalar(tag, value, epoch)
+        wandb.log({tag: value, 'epoch': epoch})
+        # val_writer.add_scalar(tag, value, epoch)
 
     print('Validation microPrec: {:.6f} microF1: {:.6f} sampleF1: {:.6f} microF2: {:.6f} sampleF2: {:.6f}'.format(
             micro_prec,

@@ -123,6 +123,39 @@ class ResNet50(nn.Module):
 
         return logits
 
+# [todo] Taeil: need to match the moco
+class Moco(nn.Module):
+    def __init__(self, mocoModel, n_inputs = 12, numCls = 17):
+        super().__init__()
+
+        resnet = models.resnet50(pretrained=False)
+        resnet.load_state_dict(mocoModel["state_dict"])
+
+        self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        self.encoder = nn.Sequential(
+            self.conv1,
+            resnet.bn1,
+            resnet.relu,
+            resnet.maxpool,
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4,
+            resnet.avgpool
+        )
+        self.FC = nn.Linear(2048, numCls)
+
+        self.apply(weights_init_kaiming)
+        self.apply(fc_init_weights)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+
+        logits = self.FC(x)
+
+        return logits
+
 #class ResNet50_em512(nn.Module):
 #    def __init__(self, n_inputs = 12, numCls = 17):
 #        super().__init__()

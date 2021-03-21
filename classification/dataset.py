@@ -19,21 +19,7 @@ S2_BANDS_RGB = [2, 3, 4] # B(2),G(3),R(4)
 # util function for reading s2 data
 def load_s2(path, imgTransform, s2_band): 
     bands_selected = s2_band
-    ############## test ############
-    path = path.strip()
-    """
-    #with rasterio.open('/workspace/app/data/sen12ms/ROIs1158_spring/s2_101/ROIs1158_spring_s2_101_p138.tif') as src:
-    print("RasterIO Loading file ", ' /workspace/app/data/sen12ms/ROIs1970_fall/s2_122/ROIs1970_fall_s2_122_p130.tif')
-    with rasterio.open('/workspace/app/data/sen12ms/ROIs1970_fall/s2_122/ROIs1970_fall_s2_122_p130.tif') as src:
-        print(src.width, src.height)
-    print(src.crs)
-    print(src.transform)
-    print(src.count)
-    print(src.indexes)
-    """
-    #################################
     with rasterio.open(path) as data:
-        #print("Reading data for band ", bands_selected, "path ", path)
         s2 = data.read(bands_selected)
     s2 = s2.astype(np.float32)
     if not imgTransform:
@@ -129,7 +115,7 @@ class SEN12MS(data.Dataset):
 
     def __init__(self, path, ls_dir=None, imgTransform=None, 
                  label_type="multi_label", threshold=0.1, subset="train",
-                 use_s2=False, use_s1=False, use_RGB=False, IGBP_s=True):
+                 use_s2=False, use_s1=False, use_RGB=False, IGBP_s=True, data_size="full"):
         """Initialize the dataset"""
 
         # inizialize
@@ -237,31 +223,33 @@ class SEN12MS(data.Dataset):
 #      
 #-------------------------------- import split lists--------------------------------
         if label_type == "multi_label" or label_type == "single_label":
+
+            file = os.path.join(ls_dir, f'train_list_{data_size}.pkl')
+            sample_list = pkl.load(open(file, "rb"))
+            total_sample_size = len(sample_list)
+            # 80/20 split
+            train_sample_size = int(total_sample_size * 0.8)
             # find and index samples
             self.samples = []
+
             if subset == "train":
-                pbar = tqdm(total=162555)   # 162556-1 samples in train set 
-                # 1 broken file "ROIs1868_summer_s2_146_p202" had been removed 
+                sample_list = sample_list[:train_sample_size]
+                pbar = tqdm(total=train_sample_size)  # 162556-1 samples in train set
+                # 1 broken file "ROIs1868_summer_s2_146_p202" had been removed
                 # from the list already
-            if subset == "val":
-                pbar = tqdm(total=18550)   # 18550 samples in val set
-            if subset == "test":
-                pbar = tqdm(total=18106)   # 18106 samples in test set
-            pbar.set_description("[Load]")
-            
-            if subset == "train":
-                file =os.path.join(ls_dir, 'train_list_updated.pkl')
-                sample_list = pkl.load(open(file, "rb"))
-                
             elif subset == "val":
-                file =os.path.join(ls_dir, 'val_list_updated.pkl')
-                sample_list = pkl.load(open(file, "rb"))
-                
+                sample_list = sample_list[train_sample_size:]
+                pbar = tqdm(total=total_sample_size-train_sample_size)   # 18550 samples in val set
             else:
+                pbar = tqdm(total=18106)   # 18106 samples in test set
                 file =os.path.join(ls_dir, 'test_list.pkl')
                 sample_list = pkl.load(open(file, "rb"))
-                
+                print("test_list should be 18106:", len(sample_list))
+
+            pbar.set_description("[Load]")
+
             # remove broken file
+            # [todo] tg: just remove from train list to simplify
             broken_file = 'ROIs1868_summer_s2_146_p202.tif'
             if broken_file in sample_list:
                 sample_list.remove(broken_file)
