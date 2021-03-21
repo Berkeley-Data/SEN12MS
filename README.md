@@ -133,9 +133,10 @@ hold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --
 _size 1000 --epochs 500 --pt_name vivid-resonance-73 --pt_type bb --pt_dir pretrained/moco
  
  ```
- 
- 
+`pt_type`: `bb`(backbone) or `qe`(query encoder)
+`pt_name`: the name of the model (wandb run name)
 
+Evaluate trained models for classification 
 ```
 CUDA_VISIBLE_DEVICES=0 \  
 python test.py \  
@@ -146,8 +147,6 @@ python test.py \
   --batch_size 64 \  
   --num_workers 4 \
 ```
-
-
 
 Examples
 ```
