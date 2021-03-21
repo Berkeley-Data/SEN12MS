@@ -122,16 +122,8 @@ finetune with pretrained models
 -  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
 - [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
 
- ```
- CUDA_VISIBLE_DEVICES=0 
- python classification/main_train.py --exp_name finetune_test --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 1 --resume pretrained/moco/silvery-oath7-2rr3864e_bb_converted.pth
- 
- 
- python classification/main_train.py --exp_name finetune_bb --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /
-home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type single_label --thres
-hold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data
-_size 1000 --epochs 500 --pt_name vivid-resonance-73 --pt_type bb --pt_dir pretrained/moco
- 
+ ``` 
+CUDA_VISIBLE_DEVICES=1 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 500 --pt_name vivid-resonance-73 --pt_type bb --pt_dir pretrained/moco
  ```
 - `pt_type`: `bb`(backbone) or `qe`(query encoder)
 - `pt_name`: the name of the model (wandb run name)
