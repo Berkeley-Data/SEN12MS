@@ -1,2 +1,7 @@
-1. What the difference evaluation options are and what they mean.
+1. The difference evaluation options:
+- a. 
+
+
+
+2. 
 
