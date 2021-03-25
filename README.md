@@ -123,7 +123,7 @@ finetune with pretrained models
 - [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
 
  ``` 
-CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 500 --pt_name silvery-oath7-2rr3864e --pt_type qe --pt_dir pretrained/moco
+CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 2048 --epochs 500 --pt_name silvery-oath7-2rr3864e --pt_type qe --pt_dir pretrained/moco
  ```
 - `pt_type`: `bb`(backbone) or `qe`(query encoder)
 - `pt_name`: the name of the model (wandb run name)
