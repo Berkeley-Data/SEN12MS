@@ -222,10 +222,14 @@ def main():
         model = DenseNet169(n_inputs, numCls)
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
+    elif args.model == 'DenseNet201':
+        model = DenseNet201(n_inputs, numCls)
     elif args.model == 'Moco':
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
         assert os.path.exists(pt_path)
         model = Moco(torch.load(pt_path), n_inputs, numCls)
+        # model = Moco(n_inputs, numCls)
+
     else:
         raise NameError("no model")
 
@@ -271,7 +275,7 @@ def main():
 
 # ----------------------------- executing Train/Val. 
     # train network
-    wandb.watch(model, log="all")
+    # wandb.watch(model, log="all")
     for epoch in range(start_epoch, args.epochs):
 
         print('Epoch {}/{}'.format(epoch, args.epochs - 1))
