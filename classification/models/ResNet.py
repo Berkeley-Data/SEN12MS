@@ -131,9 +131,15 @@ class Moco(nn.Module):
         resnet = models.resnet50(pretrained=False)
         resnet.load_state_dict(mocoModel["state_dict"])
 
+<<<<<<< HEAD
         # new add following to match moco conv1 layer -- (testing)
         self.conv1 = nn.Sequential(
             nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False),
+=======
+        # new add following moco -- (testing)
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False)
+>>>>>>> 137c0bd40f0ad1130b513c7d8895f9a61c8dc0df
             nn.BatchNorm2d(3),
             nn.ReLU(inplace=True)
         )
