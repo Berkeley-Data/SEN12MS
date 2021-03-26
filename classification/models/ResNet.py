@@ -123,7 +123,7 @@ class ResNet50(nn.Module):
 
         return logits
 
-# [todo] Taeil: need to match the moco
+# [todo] Taeil: need to match the moco and add input module 1x1 conv
 class Moco(nn.Module):
     def __init__(self, mocoModel, n_inputs = 12, numCls = 17):
         super().__init__()
