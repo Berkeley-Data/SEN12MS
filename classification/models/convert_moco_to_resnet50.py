@@ -4,7 +4,7 @@ import torch
 import argparse
 from torchvision import models
 
-# Command: python convert_models.py -i <path to the moco model xyz.pth> -bb True
+# Command: python convert_moco_to_resnet50.py -i <path to the moco model xyz.pth> -bb True
 # -bb True indicates to extract backbone weights. -bb False indicates to extract encoder query weights
 
 if __name__ == "__main__":
@@ -43,6 +43,7 @@ if __name__ == "__main__":
     obj = obj["state_dict"]
 
     newmodel = {}
+    inputmodule_model = {}
     for k, v in obj.items():
         #print(k,':::',v)
         #print(k)
@@ -52,8 +53,15 @@ if __name__ == "__main__":
         # There won't be any performance issue as it's a one time run during conversion
         if k.startswith("queue"):
             continue
-        elif k.startswith("input_module"):
+        elif k.startswith("input_module_k"):
             continue
+        elif k.startswith("input_module_q"):
+            if not k.endswith("num_batches_tracked"):
+                # Input module is added under a separate key
+                # Note: Input module values are available only for query and key encoders in moco model.
+                k = k.replace("input_module_q", "input_module")
+                inputmodule_model[k] = v
+                #print("K: ",k, " V:",v)
         elif k.startswith("encoder_k"):
             continue
         elif k.startswith("encoder_q.1.mlp"):
@@ -82,6 +90,7 @@ if __name__ == "__main__":
 
     res = {
         "state_dict": newmodel,
+        "input_module": inputmodule_model,
         "__author__": "OpenSelfSup",
         "matching_heuristics": True
     }
