@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152, Moco
+from models.ResNet import ResNet50, ResNet101, ResNet152, Moco, Moco2
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -33,7 +33,7 @@ import wandb
     
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco']
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco2']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -242,10 +242,16 @@ def main():
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
     # finetune moco pre-trained model
-    elif args.model == 'Moco':
+    elif args.model.startswith("Moco"):
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
         assert os.path.exists(pt_path)
-        model = Moco(torch.load(pt_path), n_inputs, numCls)
+        if args.model == 'Moco':
+            print("Loading Moco module")
+            model = Moco(torch.load(pt_path), n_inputs, numCls)
+        else: # Assume Moco2 at present
+            print("Loading Moco2 module")
+            model = Moco2(torch.load(pt_path), n_inputs, numCls)
+
     else:
         raise NameError("no model")
 
