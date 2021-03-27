@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152, Moco, Moco2
+from models.ResNet import ResNet50, ResNet101, ResNet152, Moco, Moco_1x1, ResNet50_1x1
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -33,7 +33,7 @@ import wandb
     
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco2']
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'ResNet50_1x1']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -229,6 +229,8 @@ def main():
         model = VGG19(n_inputs, numCls)
     elif args.model == 'ResNet50':
         model = ResNet50(n_inputs, numCls)
+    elif args.model == 'ResNet50_1x1':
+        model = ResNet50_1x1(n_inputs, numCls)
     elif args.model == 'ResNet101':
         model = ResNet101(n_inputs, numCls)
     elif args.model == 'ResNet152':
@@ -250,7 +252,7 @@ def main():
             model = Moco(torch.load(pt_path), n_inputs, numCls)
         else: # Assume Moco2 at present
             print("Loading Moco2 module")
-            model = Moco2(torch.load(pt_path), n_inputs, numCls)
+            model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
 
     else:
         raise NameError("no model")
