@@ -222,7 +222,8 @@ class Moco_1x1(nn.Module):
 
         self.FC = nn.Linear(2048, numCls)
 
-        self.apply(weights_init_kaiming)
+        # We don't need to initialize here as we are transferring the weights
+        #self.apply(weights_init_kaiming)
         self.apply(fc_init_weights)
 
     def forward(self, x):
