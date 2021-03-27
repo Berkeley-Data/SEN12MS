@@ -131,8 +131,19 @@ class Moco(nn.Module):
         resnet = models.resnet50(pretrained=False)
         resnet.load_state_dict(mocoModel["state_dict"])
 
-        self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        self.Conv1x1Block = nn.Sequential(
+            nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False),
+            nn.BatchNorm2d(3),
+            nn.ReLU(inplace=True)
+        )
+
+        # this does not work.
+        # self.Conv1x1Block.load_state_dict(mocoModel["input_module"])
+
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=(256, 256), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(
+            self.Conv1x1Block,
             self.conv1,
             resnet.bn1,
             resnet.relu,
@@ -143,6 +154,7 @@ class Moco(nn.Module):
             resnet.layer4,
             resnet.avgpool
         )
+
         self.FC = nn.Linear(2048, numCls)
 
         self.apply(weights_init_kaiming)
