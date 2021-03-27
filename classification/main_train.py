@@ -94,8 +94,8 @@ parser.add_argument('--pt_dir', '-pd', type=str, default=None,
                     help='directory for pretrained model', )
 parser.add_argument('--pt_name', '-pn', type=str, default=None,
                     help='model name without extension', )
-parser.add_argument('--pt_type', '-pt', type=str, default=None,
-                    help='model name without extension', )
+parser.add_argument('--pt_type', '-pt', type=str, default='bb',
+                    help='bb (backbone) or qe (query encoder)', )
 
 args = parser.parse_args()
 
