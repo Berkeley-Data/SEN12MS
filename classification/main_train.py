@@ -290,7 +290,7 @@ def main():
 
 # ----------------------------- executing Train/Val. 
     # train network
-    wandb.watch(model, log="all")
+    # wandb.watch(model, log="all")
     for epoch in range(start_epoch, args.epochs):
 
         print('Epoch {}/{}'.format(epoch, args.epochs - 1))
