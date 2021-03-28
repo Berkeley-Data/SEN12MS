@@ -300,7 +300,7 @@ class Moco(nn.Module):
 
         self.FC = nn.Linear(2048, numCls)
 
-        self.apply(weights_init_kaiming)
+        self.conv1.apply(weights_init_kaiming)
         self.apply(fc_init_weights)
 
     def forward(self, x):
