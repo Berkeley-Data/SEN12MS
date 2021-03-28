@@ -135,7 +135,8 @@ class ResNet50_1x1(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=(256, 256), stride=(2, 2), padding=(3, 3), bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.conv1 = nn.Conv2d(3, 64, kernel_size=(256, 256), stride=(2, 2), padding=(3, 3), bias=False)
         # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(
             self.Conv1x1Block,
@@ -221,7 +222,8 @@ class Moco_1x1(nn.Module):
 
         self.FC = nn.Linear(2048, numCls)
 
-        self.apply(weights_init_kaiming)
+        # We don't need to initialize here as we are transferring the weights
+        #self.apply(weights_init_kaiming)
         self.apply(fc_init_weights)
 
     def forward(self, x):
