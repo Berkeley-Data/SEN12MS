@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152, Moco, Moco_1x1, ResNet50_1x1
+from models.ResNet import ResNet50, ResNet50_1x1, ResNet101, ResNet152, Moco, Moco_1x1, Moco_1x1RND
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -32,8 +32,8 @@ import wandb
 #sec.2 (done)
     
 model_choices = ['VGG16', 'VGG19',
-                 'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'ResNet50_1x1']
+                 'ResNet50','ResNet101','ResNet152', 'ResNet50_1x1',
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -248,11 +248,16 @@ def main():
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
         assert os.path.exists(pt_path)
         if args.model == 'Moco':
-            print("Loading Moco module")
+            print("transfer backbone weights but no conv 1x1 input module")
             model = Moco(torch.load(pt_path), n_inputs, numCls)
-        else: # Assume Moco2 at present
-            print("Loading Moco2 module")
+        elif args.model == 'Moco_1x1':
+            print("transfer backbone weights and input module weights")
             model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
+        elif args.model == 'Moco_1x1RND':
+            print("transfer backbone weights but initialize input module random with random weights")
+            model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
+        else:  # Assume Moco2 at present
+            raise NameError("no model")
 
     else:
         raise NameError("no model")
