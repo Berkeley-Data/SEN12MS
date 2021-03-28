@@ -135,11 +135,12 @@ class ResNet50_1x1(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=(256, 256), stride=(2, 2), padding=(3, 3), bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.conv1 = nn.Conv2d(3, 64, kernel_size=(256, 256), stride=(2, 2), padding=(3, 3), bias=False)
         # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(
             self.Conv1x1Block,
-            self.conv1,
+            self.conv1, # self.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
@@ -208,6 +209,7 @@ class Moco_1x1(nn.Module):
         # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(
             self.Conv1x1Block,
+            # self.conv1,
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
@@ -221,7 +223,49 @@ class Moco_1x1(nn.Module):
 
         self.FC = nn.Linear(2048, numCls)
 
-        self.apply(weights_init_kaiming)
+        # self.apply(weights_init_kaiming)
+        self.apply(fc_init_weights)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+
+        logits = self.FC(x)
+
+        return logits
+
+class Moco_1x1RND(nn.Module):
+    def __init__(self, mocoModel, n_inputs = 12, numCls = 17):
+        super().__init__()
+
+        resnet = models.resnet50(pretrained=False)
+
+        print("n_inputs :",n_inputs)
+
+        self.Conv1x1Block = nn.Sequential(
+            nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False),
+            nn.BatchNorm2d(3),
+            nn.ReLU(inplace=True)
+        )
+
+        # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        self.encoder = nn.Sequential(
+            self.Conv1x1Block,
+            resnet.conv1,
+            resnet.bn1,
+            resnet.relu,
+            resnet.maxpool,
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4,
+            resnet.avgpool
+        )
+
+        self.FC = nn.Linear(2048, numCls)
+
+        # We don't need to initialize here as we are transferring the weights
+        #self.apply(weights_init_kaiming)
         self.apply(fc_init_weights)
 
     def forward(self, x):
