@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152, Moco, Moco_1x1, ResNet50_1x1
+from models.ResNet import ResNet50, ResNet50_1x1, ResNet101, ResNet152, Moco, Moco_1x1, Moco_1x1RND
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
@@ -32,8 +32,8 @@ import wandb
 #sec.2 (done)
     
 model_choices = ['VGG16', 'VGG19',
-                 'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'ResNet50_1x1']
+                 'ResNet50','ResNet101','ResNet152', 'ResNet50_1x1',
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -80,7 +80,13 @@ parser.add_argument('--model', type=str, choices = model_choices,
 # training hyperparameters
 parser.add_argument('--lr', type=float, default=0.001, 
                     help='initial learning rate')
-parser.add_argument('--decay', type=float, default=1e-5, 
+parser.add_argument('--use_lr_step', action='store_true', default=False,
+                    help='use learning rate steps')
+parser.add_argument('--lr_step_size', type=int, default=25,
+                    help='Learning rate step size')
+parser.add_argument('--lr_step_gamma', type=float, default=0.1,
+                    help='Learning rate step gamma')
+parser.add_argument('--decay', type=float, default=1e-5,
                     help='decay rate')
 parser.add_argument('--batch_size', type=int, default=64,
                     help='mini-batch size (default: 64)')
@@ -243,27 +249,23 @@ def main():
         model = DenseNet169(n_inputs, numCls)
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
-<<<<<<< HEAD
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
-    elif args.model == 'Moco':
-        pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
-        assert os.path.exists(pt_path)
-        model = Moco(torch.load(pt_path), n_inputs, numCls)
-        # model = Moco(n_inputs, numCls)
-=======
     # finetune moco pre-trained model
     elif args.model.startswith("Moco"):
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
         assert os.path.exists(pt_path)
         if args.model == 'Moco':
-            print("Loading Moco module")
+            print("transfer backbone weights but no conv 1x1 input module")
             model = Moco(torch.load(pt_path), n_inputs, numCls)
-        else: # Assume Moco2 at present
-            print("Loading Moco2 module")
+        elif args.model == 'Moco_1x1':
+            print("transfer backbone weights and input module weights")
             model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
->>>>>>> origin/surya
-
+        elif args.model == 'Moco_1x1RND':
+            print("transfer backbone weights but initialize input module random with random weights")
+            model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
+        else:  # Assume Moco2 at present
+            raise NameError("no model")
     else:
         raise NameError("no model")
 
@@ -309,10 +311,24 @@ def main():
 # ----------------------------- executing Train/Val. 
     # train network
     # wandb.watch(model, log="all")
-    for epoch in range(start_epoch, args.epochs):
 
-        print('Epoch {}/{}'.format(epoch, args.epochs - 1))
-        print('-' * 10)
+    scheduler = None
+    if args.use_lr_step:
+        # Ex: If initial Lr is 0.0001, step size is 25, and gamma is 0.1, then lr will be changed for every 20 steps
+        # 0.0001 - first 25 epochs
+        # 0.00001 - 25 to 50 epochs
+        # 0.000001 - 50 to 75 epochs
+        # 0.0000001 - 75 to 100 epochs
+        # https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_step_gamma)
+
+    for epoch in range(start_epoch, args.epochs):
+        if args.use_lr_step:
+            scheduler.step()
+            print('Epoch {}/{} lr: {}'.format(epoch, args.epochs - 1, optimizer.param_groups[0]['lr']))
+        else:
+            print('Epoch {}/{}'.format(epoch, args.epochs - 1))
+        print('-' * 25)
 
         train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda)
         micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda)

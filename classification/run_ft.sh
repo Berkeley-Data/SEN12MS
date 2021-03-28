@@ -6,9 +6,9 @@ do
   do
     for label_tp in single_label multi_label
     do
-      for model in Moco_1x1 Moco
+      for model in Moco_1x1 Moco Moco_1x1Rnd
       do
-        CUDA_VISIBLE_DEVICES=3 \
+        CUDA_VISIBLE_DEVICES=1 \
         python classification/main_train.py --exp_name finetune --IGBP_simple \
                                             --pt_name vivid-resonance-73 --pt_dir pretrained/moco \
                                             --batch_size 64 --num_workers 4 --data_size 1024 \
