@@ -252,6 +252,7 @@ def main():
     # finetune moco pre-trained model
     elif args.model.startswith("Moco"):
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        print(pt_path)
         assert os.path.exists(pt_path)
         if args.model == 'Moco':
             print("transfer backbone weights but no conv 1x1 input module")
