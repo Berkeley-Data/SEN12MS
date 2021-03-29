@@ -264,9 +264,10 @@ def main():
             model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
         else:  # Assume Moco2 at present
             raise NameError("no model")
-
     else:
         raise NameError("no model")
+
+    print(model)
 
     # move model to GPU if is available
     if use_cuda:
@@ -495,6 +496,7 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             "AverageAcc": aa}
 
     wandb.run.summary.update(info)
+    print(model)
     print("saving metrics...")
     # pkl.dump(info, open("test_scores.pkl", "wb"))
 

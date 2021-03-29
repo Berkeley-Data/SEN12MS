@@ -239,6 +239,7 @@ class Moco_1x1RND(nn.Module):
         super().__init__()
 
         resnet = models.resnet50(pretrained=False)
+        resnet.load_state_dict(mocoModel["state_dict"])
 
         print("n_inputs :",n_inputs)
 
