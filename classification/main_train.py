@@ -32,7 +32,7 @@ import wandb
 #sec.2 (done)
     
 model_choices = ['VGG16', 'VGG19',
-                 'ResNet50','ResNet101','ResNet152', 'ResNet50_1x1',
+                 'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
                  'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
 
@@ -233,9 +233,9 @@ def main():
         model = VGG16(n_inputs, numCls)
     elif args.model == 'VGG19':
         model = VGG19(n_inputs, numCls)
-    elif args.model == 'ResNet50':
+    elif args.model == 'Supervised':
         model = ResNet50(n_inputs, numCls)
-    elif args.model == 'ResNet50_1x1':
+    elif args.model == 'Supervised_1x1':
         model = ResNet50_1x1(n_inputs, numCls)
     elif args.model == 'ResNet101':
         model = ResNet101(n_inputs, numCls)
@@ -254,6 +254,7 @@ def main():
     # finetune moco pre-trained model
     elif args.model.startswith("Moco"):
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        print(pt_path)
         assert os.path.exists(pt_path)
         if args.model == 'Moco':
             print("transfer backbone weights but no conv 1x1 input module")
@@ -268,6 +269,8 @@ def main():
             raise NameError("no model")
     else:
         raise NameError("no model")
+
+    print(model)
 
     # move model to GPU if is available
     if use_cuda:
@@ -496,6 +499,7 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             "AverageAcc": aa}
 
     wandb.run.summary.update(info)
+    print(model)
     print("saving metrics...")
     # pkl.dump(info, open("test_scores.pkl", "wb"))
 

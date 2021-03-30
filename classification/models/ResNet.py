@@ -174,7 +174,7 @@ class Moco_1x1(nn.Module):
 
         print("n_inputs :",n_inputs)
 
-        self.Conv1x1Block = nn.Sequential(
+        Conv1x1Block = nn.Sequential(
             nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False),
             nn.BatchNorm2d(3),
             nn.ReLU(inplace=True)
@@ -182,7 +182,7 @@ class Moco_1x1(nn.Module):
 
         # Update input module
         input_module_pre_trained = mocoModel["input_module"]
-        conv1x1_default_state_dict = self.Conv1x1Block.state_dict()
+        conv1x1_default_state_dict = Conv1x1Block.state_dict()
         migrated_data_dict = {}
         for k, v in input_module_pre_trained.items():
             if k == "input_module.net.0.weight":
@@ -204,11 +204,34 @@ class Moco_1x1(nn.Module):
                 migrated_data_dict["1.running_var"] = input_module_pre_trained["input_module.net.1.running_var"]
 
         conv1x1_default_state_dict.update(migrated_data_dict)
-        self.Conv1x1Block.load_state_dict(conv1x1_default_state_dict)
+        Conv1x1Block.load_state_dict(conv1x1_default_state_dict)
+
+        # whole model except FC
+        # for param in self.encoder.parameters():
+        #     param.requires_grad = False
+
+        # for param in resnet.parameters():
+        #     param.requires_grad = False
+
+
+        # for param in resnet.parameters():
+        #     param.requires_grad = False
+
+        # for param in resnet.conv1.parameters():
+        #     param.requires_grad = False
+        #
+        # for param in resnet.bn1.parameters():
+        #     param.requires_grad = False
+        #
+        # for param in resnet.relu.parameters():
+        #     param.requires_grad = False
+        #
+        # for param in resnet.maxpool.parameters():
+        #     param.requires_grad = False
 
         # self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(
-            self.Conv1x1Block,
+            Conv1x1Block,
             # self.conv1,
             resnet.conv1,
             resnet.bn1,
@@ -239,6 +262,7 @@ class Moco_1x1RND(nn.Module):
         super().__init__()
 
         resnet = models.resnet50(pretrained=False)
+        resnet.load_state_dict(mocoModel["state_dict"])
 
         print("n_inputs :",n_inputs)
 

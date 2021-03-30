@@ -178,6 +178,8 @@ def main():
     model.load_state_dict(checkpoint['model_state_dict'])
     print("=> loaded checkpoint '{}' (epoch {})".format(args.checkpoint_pth, checkpoint['epoch']))
 
+    print(model)
+
     # set model to evaluation mode
     model.eval()
 
