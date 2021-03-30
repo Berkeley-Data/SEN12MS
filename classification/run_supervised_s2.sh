@@ -1,12 +1,12 @@
 #!/bin/bash
 
-for lr in 0.00001 0.0001 0.001
+for lr in 0.00001 0.00005 0.0001 0.001 0.001
 do
-  for epoch in 100 200 400
+  for epoch in 200
   do
     for label_tp in single_label multi_label
     do
-      for model in ResNet50_1x1 ResNet50
+      for model in Supervised_1x1 Supervised
       do
         python classification/main_train.py --exp_name sup_learning --IGBP_simple \
                                             --lr ${lr} --use_lr_step --lr_step_size 30 --decay 1e-5 \

@@ -32,7 +32,7 @@ import wandb
 #sec.2 (done)
     
 model_choices = ['VGG16', 'VGG19',
-                 'ResNet50','ResNet101','ResNet152', 'ResNet50_1x1',
+                 'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
                  'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
 
@@ -233,9 +233,9 @@ def main():
         model = VGG16(n_inputs, numCls)
     elif args.model == 'VGG19':
         model = VGG19(n_inputs, numCls)
-    elif args.model == 'ResNet50':
+    elif args.model == 'Supervised':
         model = ResNet50(n_inputs, numCls)
-    elif args.model == 'ResNet50_1x1':
+    elif args.model == 'Supervised_1x1':
         model = ResNet50_1x1(n_inputs, numCls)
     elif args.model == 'ResNet101':
         model = ResNet101(n_inputs, numCls)

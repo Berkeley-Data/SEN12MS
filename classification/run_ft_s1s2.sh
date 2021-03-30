@@ -1,8 +1,8 @@
 #!/bin/bash
 
-for lr in 0.00001 0.0001 0.001
+for lr in 0.00001 0.00005 0.0001 0.001 0.001
 do
-  for epoch in 100 200 400
+  for epoch in 200
   do
     for label_tp in single_label multi_label
     do
