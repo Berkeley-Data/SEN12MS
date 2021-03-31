@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="taeil@angler.ist.berkeley.edu:22 agent" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
+    <serverData>
+      <paths name="Colorado_Llano">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="taeil@angler.ist.berkeley.edu:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/taeil/SEN12MS" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="taeil@angler.ist.berkeley.edu:22 agent">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/taeil/SEN12MS_E/SEN12MS" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
