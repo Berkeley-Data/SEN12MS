@@ -20,19 +20,20 @@ sys.path.append('../')
 
 from dataset import SEN12MS, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
-from models.ResNet import ResNet50, ResNet101, ResNet152, Moco
+from models.ResNet import ResNet50, ResNet50_1x1, ResNet101, ResNet152, Moco, Moco_1x1, Moco_1x1RND
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
-    Coverage_error, Ranking_loss, LabelAvgPrec_score
+    Coverage_error, Ranking_loss, LabelAvgPrec_score, calssification_report, \
+    conf_mat_nor, get_AA, multi_conf_mat, OA_multi
 
 import wandb
 
 #sec.2 (done)
     
 model_choices = ['VGG16', 'VGG19',
-                 'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco']
+                 'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
 
 # ----------------------- define and parse arguments --------------------------
@@ -68,6 +69,8 @@ parser.add_argument('--threshold', type=float, default=0.1,
                     labels, mean/std for normalizatin would not be accurate \
                     if the threshold is larger than 0.22. \
                     for single_label threshold would be ignored')
+parser.add_argument('--eval', action='store_true', default=False,
+                    help='evaluate against test set')
 
 # network
 parser.add_argument('--model', type=str, choices = model_choices,
@@ -77,7 +80,13 @@ parser.add_argument('--model', type=str, choices = model_choices,
 # training hyperparameters
 parser.add_argument('--lr', type=float, default=0.001, 
                     help='initial learning rate')
-parser.add_argument('--decay', type=float, default=1e-5, 
+parser.add_argument('--use_lr_step', action='store_true', default=False,
+                    help='use learning rate steps')
+parser.add_argument('--lr_step_size', type=int, default=25,
+                    help='Learning rate step size')
+parser.add_argument('--lr_step_gamma', type=float, default=0.1,
+                    help='Learning rate step gamma')
+parser.add_argument('--decay', type=float, default=1e-5,
                     help='decay rate')
 parser.add_argument('--batch_size', type=int, default=64,
                     help='mini-batch size (default: 64)')
@@ -91,8 +100,8 @@ parser.add_argument('--pt_dir', '-pd', type=str, default=None,
                     help='directory for pretrained model', )
 parser.add_argument('--pt_name', '-pn', type=str, default=None,
                     help='model name without extension', )
-parser.add_argument('--pt_type', '-pt', type=str, default=None,
-                    help='model name without extension', )
+parser.add_argument('--pt_type', '-pt', type=str, default='bb',
+                    help='bb (backbone) or qe (query encoder)', )
 
 args = parser.parse_args()
 
@@ -168,7 +177,15 @@ def main():
                           label_type=label_type, threshold=args.threshold, subset="val", 
                           use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
                           IGBP_s=args.IGBP_simple, data_size=args.data_size)
-    
+
+    if args.eval:
+        test_dataGen = SEN12MS(args.data_dir, args.label_split_dir,
+                               imgTransform=imgTransform,
+                               label_type=label_type, threshold=args.threshold, subset="test",
+                               use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                               IGBP_s=args.IGBP_simple)
+
+
     
     # number of input channels
     n_inputs = train_dataGen.n_inputs 
@@ -186,6 +203,13 @@ def main():
                                  shuffle=False, 
                                  pin_memory=True)
 
+    if args.eval:
+        test_data_loader = DataLoader(test_dataGen,
+                                  batch_size=args.batch_size,
+                                  num_workers=args.num_workers,
+                                  shuffle=False,
+                                  pin_memory=True)
+
 # -------------------------------- ML setup
     # cuda
     use_cuda = torch.cuda.is_available()
@@ -196,8 +220,11 @@ def main():
     # define number of classes
     if args.IGBP_simple:
         numCls = 10
+        ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
     else:
         numCls = 17
+        ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+                      '11', '12', '13', '14', '15', '16', '17']
     
     print('num_class: ', numCls)
 
@@ -206,14 +233,14 @@ def main():
         model = VGG16(n_inputs, numCls)
     elif args.model == 'VGG19':
         model = VGG19(n_inputs, numCls)
-        
-    elif args.model == 'ResNet50':
+    elif args.model == 'Supervised':
         model = ResNet50(n_inputs, numCls)
+    elif args.model == 'Supervised_1x1':
+        model = ResNet50_1x1(n_inputs, numCls)
     elif args.model == 'ResNet101':
         model = ResNet101(n_inputs, numCls)
     elif args.model == 'ResNet152':
         model = ResNet152(n_inputs, numCls)
-        
     elif args.model == 'DenseNet121':
         model = DenseNet121(n_inputs, numCls)
     elif args.model == 'DenseNet161':
@@ -222,13 +249,28 @@ def main():
         model = DenseNet169(n_inputs, numCls)
     elif args.model == 'DenseNet201':
         model = DenseNet201(n_inputs, numCls)
-    elif args.model == 'Moco':
+    elif args.model == 'DenseNet201':
+        model = DenseNet201(n_inputs, numCls)
+    # finetune moco pre-trained model
+    elif args.model.startswith("Moco"):
         pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        print(pt_path)
         assert os.path.exists(pt_path)
-        model = Moco(torch.load(pt_path), n_inputs, numCls)
+        if args.model == 'Moco':
+            print("transfer backbone weights but no conv 1x1 input module")
+            model = Moco(torch.load(pt_path), n_inputs, numCls)
+        elif args.model == 'Moco_1x1':
+            print("transfer backbone weights and input module weights")
+            model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
+        elif args.model == 'Moco_1x1RND':
+            print("transfer backbone weights but initialize input module random with random weights")
+            model = Moco_1x1(torch.load(pt_path), n_inputs, numCls)
+        else:  # Assume Moco2 at present
+            raise NameError("no model")
     else:
         raise NameError("no model")
 
+    print(model)
 
     # move model to GPU if is available
     if use_cuda:
@@ -271,11 +313,25 @@ def main():
 
 # ----------------------------- executing Train/Val. 
     # train network
-    wandb.watch(model, log="all")
-    for epoch in range(start_epoch, args.epochs):
+    # wandb.watch(model, log="all")
 
-        print('Epoch {}/{}'.format(epoch, args.epochs - 1))
-        print('-' * 10)
+    scheduler = None
+    if args.use_lr_step:
+        # Ex: If initial Lr is 0.0001, step size is 25, and gamma is 0.1, then lr will be changed for every 20 steps
+        # 0.0001 - first 25 epochs
+        # 0.00001 - 25 to 50 epochs
+        # 0.000001 - 50 to 75 epochs
+        # 0.0000001 - 75 to 100 epochs
+        # https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_step_gamma)
+
+    for epoch in range(start_epoch, args.epochs):
+        if args.use_lr_step:
+            scheduler.step()
+            print('Epoch {}/{} lr: {}'.format(epoch, args.epochs - 1, optimizer.param_groups[0]['lr']))
+        else:
+            print('Epoch {}/{}'.format(epoch, args.epochs - 1))
+        print('-' * 25)
 
         train(train_data_loader, model, optimizer, lossfunc, label_type, epoch, use_cuda)
         micro_f1 = val(val_data_loader, model, optimizer, label_type, epoch, use_cuda)
@@ -292,6 +348,160 @@ def main():
             }, is_best_acc, sv_name)
 
         wandb.log({'epoch': epoch, 'micro_f1': micro_f1})
+
+    print("=============")
+    print("done training")
+    print("=============")
+
+    if args.eval:
+        eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS)
+
+def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
+
+    model.eval()
+    # define metrics
+    prec_score_ = Precision_score()
+    recal_score_ = Recall_score()
+    f1_score_ = F1_score()
+    f2_score_ = F2_score()
+    hamming_loss_ = Hamming_loss()
+    subset_acc_ = Subset_accuracy()
+    acc_score_ = Accuracy_score()  # from original script, not recommeded, seems not correct
+    one_err_ = One_error()
+    coverage_err_ = Coverage_error()
+    rank_loss_ = Ranking_loss()
+    labelAvgPrec_score_ = LabelAvgPrec_score()
+
+    calssification_report_ = calssification_report(ORG_LABELS)
+
+    # -------------------------------- prediction
+    y_true = []
+    predicted_probs = []
+
+    with torch.no_grad():
+        for batch_idx, data in enumerate(tqdm(test_data_loader, desc="test")):
+
+            # unpack sample
+            bands = data["image"]
+            labels = data["label"]
+
+            # move data to gpu if model is on gpu
+            if use_cuda:
+                bands = bands.to(torch.device("cuda"))
+                # labels = labels.to(torch.device("cuda"))
+
+            # forward pass
+            logits = model(bands)
+
+            # convert logits to probabilies
+            if label_type == 'multi_label':
+                probs = torch.sigmoid(logits).cpu().numpy()
+            else:
+                sm = torch.nn.Softmax(dim=1)
+                probs = sm(logits).cpu().numpy()
+
+            labels = labels.cpu().numpy()  # keep true & pred label at same loc.
+            predicted_probs += list(probs)
+            y_true += list(labels)
+
+    predicted_probs = np.asarray(predicted_probs)
+    # convert predicted probabilities into one/multi-hot labels
+    if label_type == 'multi_label':
+        y_predicted = (predicted_probs >= 0.5).astype(np.float32)
+    else:
+        loc = np.argmax(predicted_probs, axis=-1)
+        y_predicted = np.zeros_like(predicted_probs).astype(np.float32)
+        for i in range(len(loc)):
+            y_predicted[i, loc[i]] = 1
+
+    y_true = np.asarray(y_true)
+
+    # --------------------------- evaluation with metrics
+    # general
+    macro_f1, micro_f1, sample_f1 = f1_score_(y_predicted, y_true)
+    macro_f2, micro_f2, sample_f2 = f2_score_(y_predicted, y_true)
+    macro_prec, micro_prec, sample_prec = prec_score_(y_predicted, y_true)
+    macro_rec, micro_rec, sample_rec = recal_score_(y_predicted, y_true)
+    hamming_loss = hamming_loss_(y_predicted, y_true)
+    subset_acc = subset_acc_(y_predicted, y_true)
+    macro_acc, micro_acc, sample_acc = acc_score_(y_predicted, y_true)
+    # ranking-based
+    one_error = one_err_(predicted_probs, y_true)
+    coverage_error = coverage_err_(predicted_probs, y_true)
+    rank_loss = rank_loss_(predicted_probs, y_true)
+    labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
+
+    cls_report = calssification_report_(y_predicted, y_true)
+
+    if label_type == 'multi_label':
+        [conf_mat, cls_acc, aa] = multi_conf_mat(y_predicted, y_true, n_classes=numCls)
+        # the results derived from multilabel confusion matrix are not recommended to use
+        oa = OA_multi(y_predicted, y_true)
+        # this oa can be Jaccard index
+
+        info = {
+            "macroPrec": macro_prec,
+            "microPrec": micro_prec,
+            "samplePrec": sample_prec,
+            "macroRec": macro_rec,
+            "microRec": micro_rec,
+            "sampleRec": sample_rec,
+            "macroF1": macro_f1,
+            "microF1": micro_f1,
+            "sampleF1": sample_f1,
+            "macroF2": macro_f2,
+            "microF2": micro_f2,
+            "sampleF2": sample_f2,
+            "HammingLoss": hamming_loss,
+            "subsetAcc": subset_acc,
+            "macroAcc": macro_acc,
+            "microAcc": micro_acc,
+            "sampleAcc": sample_acc,
+            "oneError": one_error,
+            "coverageError": coverage_error,
+            "rankLoss": rank_loss,
+            "labelAvgPrec": labelAvgPrec,
+            "clsReport": cls_report,
+            "multilabel_conf_mat": conf_mat,
+            "class-wise Acc": cls_acc,
+            "AverageAcc": aa,
+            "OverallAcc": oa}
+
+    else:
+        conf_mat = conf_mat_nor(y_predicted, y_true, n_classes=numCls)
+        aa = get_AA(y_predicted, y_true, n_classes=numCls)  # average accuracy, \
+        # zero-sample classes are not excluded
+
+        info = {
+            "macroPrec": macro_prec,
+            "microPrec": micro_prec,
+            "samplePrec": sample_prec,
+            "macroRec": macro_rec,
+            "microRec": micro_rec,
+            "sampleRec": sample_rec,
+            "macroF1": macro_f1,
+            "microF1": micro_f1,
+            "sampleF1": sample_f1,
+            "macroF2": macro_f2,
+            "microF2": micro_f2,
+            "sampleF2": sample_f2,
+            "HammingLoss": hamming_loss,
+            "subsetAcc": subset_acc,
+            "macroAcc": macro_acc,
+            "microAcc": micro_acc,
+            "sampleAcc": sample_acc,
+            "oneError": one_error,
+            "coverageError": coverage_error,
+            "rankLoss": rank_loss,
+            "labelAvgPrec": labelAvgPrec,
+            "clsReport": cls_report,
+            "conf_mat": conf_mat,
+            "AverageAcc": aa}
+
+    wandb.run.summary.update(info)
+    print(model)
+    print("saving metrics...")
+    # pkl.dump(info, open("test_scores.pkl", "wb"))
 
 
 def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda):
@@ -337,7 +547,6 @@ def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda):
     wandb.log({'loss': lossTracker.avg, 'epoch': epoch})
 
     print('Train loss: {:.6f}'.format(lossTracker.avg))
-
 
     
 def val(valloader, model, optimizer, label_type, epoch, use_cuda):
@@ -454,6 +663,8 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
             sample_f2
             ))
     return micro_f1
+
+
 
 
 if __name__ == "__main__":
