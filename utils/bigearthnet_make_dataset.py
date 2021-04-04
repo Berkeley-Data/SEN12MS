@@ -33,11 +33,11 @@ if args.root_folder_s1 and args.root_folder_s2:
     elif not os.path.exists(args.root_folder_s2):
         print('ERROR: folder', args.root_folder_s2, 'does not exist')
         exit()
-    else:
-        folder_path_list = [i[0] for i in os.walk(args.root_folder_s1)][1:-1]
-        if len(folder_path_list) == 0:
-            print('ERROR: there is no patch directories in the root folder')
-            exit()
+    #else:
+        #folder_path_list = [i[0] for i in os.walk(args.root_folder_s1)][1:-1]
+        #if len(folder_path_list) == 0:
+        #    print('ERROR: there is no patch directories in the root folder')
+        #    exit()
 else:
     print('ERROR: -r arguments are required')
     exit()
@@ -54,7 +54,7 @@ def read_and_convert_bands(patch_folder_path, patch_name, band_names):
         # First finds related GeoTIFF path and reads values as an array
         band_path = os.path.join(
             patch_folder_path, patch_name + '_' + band_name + '.tif')
-        print("band_path",band_path)
+        #print("band_path",band_path)
         tifs.append(band_path)
 
     # /vsimem is special in-memory virtual "directory"
@@ -81,14 +81,14 @@ def read_and_convert_bands(patch_folder_path, patch_name, band_names):
     # Convert the mapping S1 image
     # Note: bigearthnet_train.csv,bigearthnet_test.csv,bigearthnet_val.csv has only S2 names
     s1_patch_name = s2_s1_mapping[patch_name]
-    print("S1 patch_name ", s1_patch_name)
+    #print("S1 patch_name ", s1_patch_name)
     patch_folder_path = os.path.join(args.root_folder_s1, s1_patch_name)
     tifs = []
     for band_name in band_names_s1:
         # First finds related GeoTIFF path and reads values as an array
         band_path = os.path.join(
             patch_folder_path, s1_patch_name + '_' + band_name + '.tif')
-        print("band_path", band_path)
+        #print("band_path", band_path)
         tifs.append(band_path)
     if len(tifs) == 2:
         # Assume S1
@@ -138,7 +138,7 @@ for csv_file in csv_file_path_list:
 
     # Read the spectral bands and convert them
     for patch_name in patch_names_list:
-        print("S2 patch_name ",patch_name)
+        #print("S2 patch_name ",patch_name)
         patch_folder_path = os.path.join(args.root_folder_s2, patch_name)
         read_and_convert_bands(patch_folder_path, patch_name, band_names_s2)
 
