@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 from datetime import datetime 
 from tqdm import tqdm
+import json
 
 import torch
 import torch.optim as optim 
@@ -126,6 +127,8 @@ if not os.path.isdir(logs_dir):
     os.makedirs(logs_dir)
 
 # ----------------------------- saving files ---------------------------------
+sv_name_eval = '' # Used to save a file during the test evaluation
+
 def write_arguments_to_file(args, filename):
     with open(filename, 'w') as f:
         for key, value in vars(args).items():
@@ -143,9 +146,10 @@ def save_checkpoint(state, is_best, name):
 # -------------------------------- Main Program -------------------------------
 def main():
     global args
-    
+    global sv_name_eval
     # save configuration to file
     sv_name = datetime.strftime(datetime.now(), '%Y%m%d_%H%M%S')
+    sv_name_eval = sv_name
     print('saving file name is ', sv_name)
 
     write_arguments_to_file(args, os.path.join(logs_dir, sv_name+'_arguments.txt'))
@@ -376,6 +380,8 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
     y_true = []
     predicted_probs = []
 
+    pred_dic = {}
+
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_data_loader, desc="test")):
 
@@ -401,6 +407,15 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             labels = labels.cpu().numpy()  # keep true & pred label at same loc.
             predicted_probs += list(probs)
             y_true += list(labels)
+
+            for j in range(len(data['id'])):
+                pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
+                                           'prediction': str(list(list(probs)[j]))
+                                           }
+
+    fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
+    with open(fileout,'w') as fp:
+        json.dump(pred_dic, fp)
 
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels
@@ -593,8 +608,7 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
             labels = labels.cpu().numpy() # keep true & pred label at same loc.
             predicted_probs += list(probs)
             y_true += list(labels)
-            
-        
+
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels 
     if label_type == 'multi_label':
