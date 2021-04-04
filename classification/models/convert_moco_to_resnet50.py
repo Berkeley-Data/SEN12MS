@@ -3,6 +3,8 @@
 import torch
 import argparse
 from torchvision import models
+import wandb
+import os
 
 # Command: python convert_moco_to_resnet50.py -i <path to the moco model xyz.pth> -bb True
 # -bb True indicates to extract backbone weights. -bb False indicates to extract encoder query weights
@@ -23,15 +25,30 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='This script extracts/converts the backbone from a OpenSelfSup moco model')
 
+    parser.add_argument('-o', '--outputdir', type=str,
+                        help="output directory to save the model")
     parser.add_argument('-i', '--inputmodel', type=str,
-                        help="Input model file name")
-
+                        help="W&B run id or local path (e.g., 3l4yg63k)")
     parser.add_argument('-bb', '--backbone', default=True, type=str2bool,
                         help="whether to extracts/converts backbone or extracts encoder keys?")
 
     args = parser.parse_args()
 
-    obj = torch.load(args.inputmodel, map_location="cpu")
+    checkpoint = args.inputmodel
+    if os.path.exists(checkpoint):
+        obj = torch.load(checkpoint, map_location=torch.device('cpu'))
+        output_file_name = checkpoint.split('.')[0]
+    else:
+        # wandb.init(project=checkpoint.split("/")[0])
+        # if not checkpoint is not valid path, check for wandb
+        run_id = checkpoint.split("/")[1]
+        tmpdir = os.path.join(args.outputdir, run_id)
+        os.mkdir(tmpdir)
+        restored_model = wandb.restore(f'latest.pth', run_path=f"{checkpoint}", root=tmpdir, replace=False)
+        if restored_model is None:
+            raise Exception(f"failed to load the model from runid or path: {checkpoint} ")
+        obj = torch.load(restored_model.name, map_location=torch.device('cpu'))
+        output_file_name = os.path.join(args.outputdir, run_id)
 
     # Note: Original resnet50 model will not have any state_dict key. All the key values are directly under
     # the main dictionary
@@ -95,7 +112,7 @@ if __name__ == "__main__":
         "matching_heuristics": True
     }
 
-    output_file_name = args.inputmodel.split('.')[0]
+
 
     if args.backbone == True:
         output_file_name = output_file_name+'_bb_converted.pth'
