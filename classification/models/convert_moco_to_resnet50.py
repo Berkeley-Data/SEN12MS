@@ -5,6 +5,7 @@ import argparse
 from torchvision import models
 import wandb
 import os
+import torch.nn as nn
 
 # Command: python convert_moco_to_resnet50.py -i <path to the moco model xyz.pth> -bb True
 # -bb True indicates to extract backbone weights. -bb False indicates to extract encoder query weights
@@ -124,6 +125,7 @@ if __name__ == "__main__":
 
     # Test the model by loading it
     resnet = models.resnet50(pretrained=False)
+    resnet.conv1 = nn.Conv2d(12, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
     resnet.load_state_dict(res["state_dict"])
 
 
