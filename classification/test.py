@@ -24,7 +24,7 @@ import wandb
 
 model_choices = ['VGG16', 'VGG19',
                  'ResNet50','ResNet101','ResNet152',
-                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201']
+                 'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco']
 label_choices = ['multi_label', 'single_label']
 
 # ------------------------ define and parse arguments -------------------------
@@ -144,7 +144,7 @@ def main():
     elif config['model'] == 'VGG19':
         model = VGG19(n_inputs, numCls)
         
-    elif config['model'] == 'ResNet50':
+    elif config['model'] == 'ResNet50' or config['model'] == 'Moco':
         model = ResNet50(n_inputs, numCls)
     elif config['model'] == 'ResNet101':
         model = ResNet101(n_inputs, numCls)
@@ -171,6 +171,8 @@ def main():
     checkpoint = torch.load(args.checkpoint_pth)
     model.load_state_dict(checkpoint['model_state_dict'])
     print("=> loaded checkpoint '{}' (epoch {})".format(args.checkpoint_pth, checkpoint['epoch']))
+
+    print(model)
 
     # set model to evaluation mode
     model.eval()
