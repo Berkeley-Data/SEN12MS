@@ -15,6 +15,10 @@ import torchvision.transforms as transforms
 S2_BANDS_LD = [2, 3, 4, 5, 6, 7, 8, 9, 12, 13]
 S2_BANDS_RGB = [2, 3, 4] # B(2),G(3),R(4)
 
+# For BigEarthNet
+S2_BANDS_LD_BIGEARTHNET = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12]
+S2_BANDS_RGB_BIGEARTHNET = [2, 3, 4] # B(2),G(3),R(4)
+
 
 # util function for reading s2 data
 def load_s2(path, imgTransform, s2_band): 
@@ -44,14 +48,22 @@ def load_s1(path, imgTransform):
     
 
 # util function for reading data from single sample
-def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use_s2, use_RGB, IGBP_s):
+def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use_s2, use_RGB, IGBP_s,
+                for_bigearthnet=False, convert_scheme=True):
 
     # load s2 data
+    img = None
     if use_s2:
-        img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD)
+        if not for_bigearthnet:
+            img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD)
+        else:
+            img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD_BIGEARTHNET)
     # load only RGB   
     if use_RGB and use_s2==False:
-        img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB)
+        if not for_bigearthnet:
+            img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB)
+        else:
+            img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB_BIGEARTHNET)
         
     # load s1 data
     if use_s1:
@@ -64,12 +76,13 @@ def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use
     lc = labels[sample["id"]]
     
     # covert label to IGBP simplified scheme
-    if IGBP_s:
-        cls1 = sum(lc[0:5]);
-        cls2 = sum(lc[5:7]); 
-        cls3 = sum(lc[7:9]);
-        cls6 = lc[11] + lc[13];
-        lc = np.asarray([cls1, cls2, cls3, lc[9], lc[10], cls6, lc[12], lc[14], lc[15], lc[16]])
+    if convert_scheme:
+        if IGBP_s:
+            cls1 = sum(lc[0:5]);
+            cls2 = sum(lc[5:7]);
+            cls3 = sum(lc[7:9]);
+            cls6 = lc[11] + lc[13];
+            lc = np.asarray([cls1, cls2, cls3, lc[9], lc[10], cls6, lc[12], lc[14], lc[15], lc[16]])
         
     if label_type == "multi_label":
         lc_hot = (lc >= threshold).astype(np.float32)     
@@ -297,6 +310,121 @@ class SEN12MS(data.Dataset):
         return len(self.samples)
 
 
+# class SEN12MS..............................
+class BigEarthNet(data.Dataset):
+    """PyTorch dataset class for the BigEarthNet dataset"""
+    # expects dataset dir as:
+    #       - S1
+    #           - patch_folder
+    #               - patchxyz.tif
+    #               - patch.jsom
+    #       - S2
+    #               - patchxyz.tif
+    #               - patch.jsom
+    def __init__(self, path, ls_dir=None, imgTransform=None,
+                 label_type="multi_label", threshold=0.1, subset="train",
+                 use_s2=False, use_s1=False, use_RGB=False, CLC_s=True, data_size="full"):
+
+        # inizialize
+        super(BigEarthNet, self).__init__()
+        self.imgTransform = imgTransform
+        self.threshold = threshold
+        self.label_type = label_type
+
+        # make sure input parameters are okay
+        if not (use_s2 or use_s1 or use_RGB):
+            raise ValueError("No input specified, set at least one of "
+                             + "use_[s2, s1, RGB] to True!")
+        self.use_s2 = use_s2
+        self.use_s1 = use_s1
+        self.use_RGB = use_RGB
+        self.CLC_s = CLC_s
+
+        assert subset in ["train", "val", "test"]
+        assert label_type in ["multi_label", "single_label"]  # new !!
+
+        # provide number of input channels
+        self.n_inputs = get_ninputs(use_s1, use_s2, use_RGB)
+
+        # provide number of CORINE Land Cover(CLC) classes
+        # CLC -> Original CORINE Land Cover(CLC) - 43
+        # CLC_s -> Small(some classes are combined) CORINE Land Cover(CLC) - 19
+        if CLC_s == True:
+            self.n_classes = 19
+        else:
+            self.n_classes = 43
+
+            # make sure parent dir exists
+        assert os.path.exists(path)
+        assert os.path.exists(ls_dir)
+
+        # -------------------------------- import split lists--------------------------------
+        if label_type == "multi_label" or label_type == "single_label":
+
+            sample_list = None
+            total_sample_size = 0
+            if subset == "train" or subset == "val":
+                file = os.path.join(ls_dir, f'bigearthnet_train_{data_size}.pkl')
+                print("BigEarthNet: Loading file ",file)
+                sample_list = pkl.load(open(file, "rb"))
+                total_sample_size = len(sample_list)
+                print("BigEarthNet: total_sample_size1 ", total_sample_size)
+                # 80/20 split
+                train_sample_size = int(total_sample_size * 0.8)
+                print("BigEarthNet: total_sample_size2 ", total_sample_size)
+            # find and index samples
+            self.samples = []
+
+            if subset == "train":
+                sample_list = sample_list[:train_sample_size]
+                pbar = tqdm(total=train_sample_size)
+            elif subset == "val":
+                sample_list = sample_list[train_sample_size:]
+                pbar = tqdm(total=total_sample_size - train_sample_size)
+            else:
+                pbar = tqdm(total=125866)  # 125866 samples in test set
+                file = os.path.join(ls_dir, 'bigearthnet_test.pkl')
+                sample_list = pkl.load(open(file, "rb"))
+                print("bigearthnet_test should be 125866:", len(sample_list))
+
+            pbar.set_description("[Load]")
+
+            for s2_id in sample_list:
+                # Note that the S1 mapped data got generated with same id as S2 (the content of tif image and the json varies)
+                s2_patch_folder = s2_id.split(".")[0]
+                s2_loc = os.path.join(path, "S2", s2_patch_folder, s2_id)
+                s1_loc = os.path.join(path, "S1", s2_patch_folder, s2_id)
+                pbar.update()
+                self.samples.append({"s1": s1_loc, "s2": s2_loc,  "id": s2_id})
+
+            pbar.close()
+        # ----------------------------------------------------------------------
+
+        # sort list of samples
+        self.samples = sorted(self.samples, key=lambda i: i['id'])
+
+        print("loaded", len(self.samples),
+              "samples from the bigearthnet subset", subset)
+
+        # import lables as a dictionary
+        label_file = os.path.join(ls_dir, 'BigEarthNet_labels.pkl')
+
+        a_file = open(label_file, "rb")
+        self.labels = pkl.load(a_file)
+        a_file.close()
+
+    def __getitem__(self, index):
+        """Get a single example from the dataset"""
+
+        # get and load sample from index file
+        sample = self.samples[index]
+        labels = self.labels
+        return load_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
+                           self.use_s1, self.use_s2, self.use_RGB, self.CLC_s, for_bigearthnet=True, convert_scheme=False)
+
+    def __len__(self):
+        """Get number of samples in the dataset"""
+        return len(self.samples)
 
 
 #%% data normalization
