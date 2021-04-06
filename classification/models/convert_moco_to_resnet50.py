@@ -26,6 +26,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='This script extracts/converts the backbone from a OpenSelfSup moco model')
 
+    parser.add_argument('-n', '--n_inputs', type=int, default=3,
+                        help="number of input channel for conv1")
     parser.add_argument('-o', '--outputdir', type=str,
                         help="output directory to save the model")
     parser.add_argument('-i', '--inputmodel', type=str,
@@ -113,8 +115,6 @@ if __name__ == "__main__":
         "matching_heuristics": True
     }
 
-
-
     if args.backbone == True:
         output_file_name = output_file_name+'_bb_converted.pth'
     else:
@@ -125,7 +125,9 @@ if __name__ == "__main__":
 
     # Test the model by loading it
     resnet = models.resnet50(pretrained=False)
-    resnet.conv1 = nn.Conv2d(12, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+    # [todo] taeil: input channel should be configurable depending on which moco module we are transferring.
+    resnet.conv1 = nn.Conv2d(args.n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
     resnet.load_state_dict(res["state_dict"])
 
+    print(f"{args.n_inputs} input channels for conv1 is complete and save at {output_file_name}")
 

@@ -35,6 +35,7 @@ model_choices = ['VGG16', 'VGG19',
                  'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
                  'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
+sensor_choices = ['s1', 's2', 's1s2']
 
 # ----------------------- define and parse arguments --------------------------
 parser = argparse.ArgumentParser()
@@ -46,8 +47,8 @@ parser.add_argument('--exp_name', type=str, default=None,
                          path would be set to model name.")
 
 # data directory
-parser.add_argument('--data_dir', type=str, default=None,
-                    help='path to SEN12MS dataset')
+parser.add_argument('--dataset', type=str, default=None,
+                    help='dataset name. dataset should be at data/{dataset}/data ')
 parser.add_argument('--label_split_dir', type=str, default=None,
                     help="path to label data and split list")
 parser.add_argument('--data_size', type=str, default="full",
@@ -55,10 +56,13 @@ parser.add_argument('--data_size', type=str, default="full",
 # input/output
 parser.add_argument('--use_bigearthnet', action='store_true', default=False,
                     help='Use sen12ms data or bigearthnet')
-parser.add_argument('--use_s2', action='store_true', default=False,
-                    help='use sentinel-2 bands')
-parser.add_argument('--use_s1', action='store_true', default=False,
-                    help='use sentinel-1 data')
+parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
+                    default='s1s2',
+                    help="s1, s2, or s1s2 (default: s1s2)")
+# parser.add_argument('--use_s2', action='store_true', default=False,
+#                     help='use sentinel-2 bands')
+# parser.add_argument('--use_s1', action='store_true', default=False,
+#                     help='use sentinel-1 data')
 parser.add_argument('--use_RGB', action='store_true', default=False,
                     help='use sentinel-2 RGB bands')
 parser.add_argument('--simple_scheme', action='store_true', default=True,
@@ -155,6 +159,10 @@ def main():
 # ----------------------------------- data
     # define mean/std of the training set (for data normalization)
     label_type = args.label_type
+    use_s1 = (args.sensor_type == 's1') | (args.sensor_type == 's1s2')
+    use_s2 = (args.sensor_type == 's2') | (args.sensor_type == 's1s2')
+
+    data_dir = os.path.join("data", args.dataset, "data")
 
     bands_mean = {}
     bands_std = {}
@@ -183,43 +191,43 @@ def main():
     # load datasets 
     imgTransform = transforms.Compose([ToTensor(),Normalize(bands_mean, bands_std)])
     if not args.use_bigearthnet:
-        train_dataGen = SEN12MS(args.data_dir, args.label_split_dir,
+        train_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
-                                use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                                 IGBP_s=args.simple_scheme, data_size=args.data_size)
 
-        val_dataGen = SEN12MS(args.data_dir, args.label_split_dir,
+        val_dataGen = SEN12MS(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
-                              use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                               IGBP_s=args.simple_scheme, data_size=args.data_size)
 
         if args.eval:
-            test_dataGen = SEN12MS(args.data_dir, args.label_split_dir,
+            test_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
-                                   use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                                    IGBP_s=args.simple_scheme)
     else:
         # Assume bigearthnet
-        train_dataGen = BigEarthNet(args.data_dir, args.label_split_dir,
+        train_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
-                                use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                                 CLC_s=args.simple_scheme, data_size=args.data_size)
 
-        val_dataGen = BigEarthNet(args.data_dir, args.label_split_dir,
+        val_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
-                              use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                               CLC_s=args.simple_scheme, data_size=args.data_size)
 
         if args.eval:
-            test_dataGen = BigEarthNet(args.data_dir, args.label_split_dir,
+            test_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
-                                   use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
                                    CLC_s=args.simple_scheme)
     
     # number of input channels
