@@ -58,13 +58,14 @@ def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD)
         else:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD_BIGEARTHNET)
-    # load only RGB   
+
+    # load only RGB
     if use_RGB and use_s2==False:
         if not for_bigearthnet:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB)
         else:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB_BIGEARTHNET)
-        
+
     # load s1 data
     if use_s1:
         if use_s2 or use_RGB:
