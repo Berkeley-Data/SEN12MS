@@ -8,7 +8,7 @@ do
     do
       for model in Moco # Moco_1x1RND Moco_1x1
       do
-        python classification/main_train.py --exp_name finetune --IGBP_simple \
+        python classification/main_train.py --exp_name finetune --simple_scheme \
                                             --lr ${lr} --use_lr_step --lr_step_size 30 --decay 1e-5 \
                                             --pt_name electric-mountain-33 --pt_dir pretrained/moco \
                                             --batch_size 64 --num_workers 4 --data_size 1024 \
