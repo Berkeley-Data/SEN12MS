@@ -18,7 +18,7 @@ import shutil
 import sys
 sys.path.append('../')
 
-from dataset import SEN12MS, ToTensor, Normalize
+from dataset import SEN12MS, BigEarthNet, ToTensor, Normalize
 from models.VGG import VGG16, VGG19
 from models.ResNet import ResNet50, ResNet50_1x1, ResNet101, ResNet152, Moco, Moco_1x1, Moco_1x1RND
 from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
@@ -35,6 +35,7 @@ model_choices = ['VGG16', 'VGG19',
                  'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
                  'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
+sensor_choices = ['s1', 's2', 's1s2']
 
 # ----------------------- define and parse arguments --------------------------
 parser = argparse.ArgumentParser()
@@ -46,20 +47,25 @@ parser.add_argument('--exp_name', type=str, default=None,
                          path would be set to model name.")
 
 # data directory
-parser.add_argument('--data_dir', type=str, default=None,
-                    help='path to SEN12MS dataset')
+parser.add_argument('--dataset', type=str, default=None,
+                    help='dataset name. dataset should be at data/{dataset}/data ')
 parser.add_argument('--label_split_dir', type=str, default=None,
                     help="path to label data and split list")
 parser.add_argument('--data_size', type=str, default="full",
                     help="64, 128, 256, 1000, 1024, full")
 # input/output
-parser.add_argument('--use_s2', action='store_true', default=False,
-                    help='use sentinel-2 bands')
-parser.add_argument('--use_s1', action='store_true', default=False,
-                    help='use sentinel-1 data')
+parser.add_argument('--use_bigearthnet', action='store_true', default=False,
+                    help='Use sen12ms data or bigearthnet')
+parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
+                    default='s1s2',
+                    help="s1, s2, or s1s2 (default: s1s2)")
+# parser.add_argument('--use_s2', action='store_true', default=False,
+#                     help='use sentinel-2 bands')
+# parser.add_argument('--use_s1', action='store_true', default=False,
+#                     help='use sentinel-1 data')
 parser.add_argument('--use_RGB', action='store_true', default=False,
                     help='use sentinel-2 RGB bands')
-parser.add_argument('--IGBP_simple', action='store_true', default=True,
+parser.add_argument('--simple_scheme', action='store_true', default=True,
                     help='use IGBP simplified scheme; otherwise: IGBP original scheme')
 parser.add_argument('--label_type', type=str, choices = label_choices,
                     default='multi_label',
@@ -153,39 +159,78 @@ def main():
 # ----------------------------------- data
     # define mean/std of the training set (for data normalization)
     label_type = args.label_type
-        
-    bands_mean = {'s1_mean': [-11.76858, -18.294598],
-                  's2_mean': [1226.4215, 1137.3799, 1139.6792, 1350.9973, 1932.9058,
-                              2211.1584, 2154.9846, 2409.1128, 2001.8622, 1356.0801]}
-                  
-    bands_std = {'s1_std': [4.525339, 4.3586307],
-                 's2_std': [741.6254, 740.883, 960.1045, 946.76056, 985.52747,
-                            1082.4341, 1057.7628, 1136.1942, 1132.7898, 991.48016]} 
+    use_s1 = (args.sensor_type == 's1') | (args.sensor_type == 's1s2')
+    use_s2 = (args.sensor_type == 's2') | (args.sensor_type == 's1s2')
 
-    
+    dataset = args.dataset
+    data_dir = os.path.join("data", dataset, "data")
+
+    bands_mean = {}
+    bands_std = {}
+    train_dataGen = None
+    val_dataGen = None
+    test_dataGen = None
+
+    print(f"Using {dataset} dataset")
+    if dataset == 'sen12ms':
+        bands_mean = {'s1_mean': [-11.76858, -18.294598],
+                      's2_mean': [1226.4215, 1137.3799, 1139.6792, 1350.9973, 1932.9058,
+                                  2211.1584, 2154.9846, 2409.1128, 2001.8622, 1356.0801]}
+        bands_std = {'s1_std': [4.525339, 4.3586307],
+                     's2_std': [741.6254, 740.883, 960.1045, 946.76056, 985.52747,
+                                1082.4341, 1057.7628, 1136.1942, 1132.7898, 991.48016]}
+    elif dataset == 'bigearthnet':
+        # THE S2 BAND STATISTICS WERE PROVIDED BY THE BIGEARTHNET TEAM
+        bands_mean = {'s1_mean': [0.4994, 0.2542],
+                      's2_mean': [340.76769064,429.9430203,614.21682446,590.23569706,950.68368468,1792.46290469,
+                                  2075.46795189,2218.94553375,2266.46036911,2246.0605464,1594.42694882,1009.32729131]}
+        bands_std = {'s1_std': [0.1902, 0.1720],
+                     's2_std': [554.81258967,572.41639287,582.87945694,675.88746967,729.89827633,1096.01480586,
+                                1273.45393088,1365.45589904,1356.13789355,1302.3292881,1079.19066363,818.86747235]}
+    else:
+        raise NameError(f"unknown dataset: {dataset}")
+
     # load datasets 
     imgTransform = transforms.Compose([ToTensor(),Normalize(bands_mean, bands_std)])
-    
-    train_dataGen = SEN12MS(args.data_dir, args.label_split_dir, 
-                            imgTransform=imgTransform, 
-                            label_type=label_type, threshold=args.threshold, subset="train", 
-                            use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                            IGBP_s=args.IGBP_simple, data_size=args.data_size)
-    
-    val_dataGen = SEN12MS(args.data_dir, args.label_split_dir, 
-                          imgTransform=imgTransform, 
-                          label_type=label_type, threshold=args.threshold, subset="val", 
-                          use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                          IGBP_s=args.IGBP_simple, data_size=args.data_size)
+    if dataset == 'sen12ms':
+        train_dataGen = SEN12MS(data_dir, args.label_split_dir,
+                                imgTransform=imgTransform,
+                                label_type=label_type, threshold=args.threshold, subset="train",
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                IGBP_s=args.simple_scheme, data_size=args.data_size)
 
-    if args.eval:
-        test_dataGen = SEN12MS(args.data_dir, args.label_split_dir,
-                               imgTransform=imgTransform,
-                               label_type=label_type, threshold=args.threshold, subset="test",
-                               use_s1=args.use_s1, use_s2=args.use_s2, use_RGB=args.use_RGB,
-                               IGBP_s=args.IGBP_simple)
+        val_dataGen = SEN12MS(data_dir, args.label_split_dir,
+                              imgTransform=imgTransform,
+                              label_type=label_type, threshold=args.threshold, subset="val",
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                              IGBP_s=args.simple_scheme, data_size=args.data_size)
 
+        if args.eval:
+            test_dataGen = SEN12MS(data_dir, args.label_split_dir,
+                                   imgTransform=imgTransform,
+                                   label_type=label_type, threshold=args.threshold, subset="test",
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                   IGBP_s=args.simple_scheme)
+    else:
+        # Assume bigearthnet
+        train_dataGen = BigEarthNet(data_dir, args.label_split_dir,
+                                imgTransform=imgTransform,
+                                label_type=label_type, threshold=args.threshold, subset="train",
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                CLC_s=args.simple_scheme, data_size=args.data_size)
 
+        val_dataGen = BigEarthNet(data_dir, args.label_split_dir,
+                              imgTransform=imgTransform,
+                              label_type=label_type, threshold=args.threshold, subset="val",
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                              CLC_s=args.simple_scheme, data_size=args.data_size)
+
+        if args.eval:
+            test_dataGen = BigEarthNet(data_dir, args.label_split_dir,
+                                   imgTransform=imgTransform,
+                                   label_type=label_type, threshold=args.threshold, subset="test",
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                   CLC_s=args.simple_scheme)
     
     # number of input channels
     n_inputs = train_dataGen.n_inputs 
@@ -218,13 +263,26 @@ def main():
         cudnn.benchmark = True
 
     # define number of classes
-    if args.IGBP_simple:
-        numCls = 10
-        ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+    if dataset == 'sen12ms':
+        if args.simple_scheme:
+            numCls = 10
+            ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        else:
+            numCls = 17
+            ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+                          '11', '12', '13', '14', '15', '16', '17']
     else:
-        numCls = 17
-        ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-                      '11', '12', '13', '14', '15', '16', '17']
+        if args.simple_scheme:
+            numCls = 19
+            ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+                          '11', '12', '13', '14', '15', '16', '17', '18', '19']
+        else:
+            numCls = 43
+            ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+                          '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+                          '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+                          '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
+                          '41', '42', '43']
     
     print('num_class: ', numCls)
 

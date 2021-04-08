@@ -307,8 +307,10 @@ class Moco(nn.Module):
         super().__init__()
 
         resnet = models.resnet50(pretrained=False)
+        resnet.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         resnet.load_state_dict(mocoModel["state_dict"])
 
+<<<<<<< HEAD
         # (testing) -- match the layer adding from moco's conv1 layer in ResNet
         self.Conv1x1Block = nn.Sequential(
             nn.Conv2d(n_inputs, 3, kernel_size=1, stride=1, bias=False),
@@ -321,6 +323,10 @@ class Moco(nn.Module):
         self.encoder = nn.Sequential(
             self.Conv1x1Block,
             self.conv1,
+=======
+        self.encoder = nn.Sequential(
+            resnet.conv1,
+>>>>>>> origin/master
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
@@ -333,7 +339,7 @@ class Moco(nn.Module):
 
         self.FC = nn.Linear(2048, numCls)
 
-        self.conv1.apply(weights_init_kaiming)
+        #self.conv1.apply(weights_init_kaiming)
         self.apply(fc_init_weights)
 
     def forward(self, x):
