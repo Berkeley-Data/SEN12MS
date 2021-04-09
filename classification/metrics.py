@@ -103,11 +103,11 @@ class Precision_score(nn.Module):
 
     def forward(self, predict_labels, true_labels):
 
-        sample_prec = precision_score(true_labels, predict_labels, average='samples')
+        # sample_prec = precision_score(true_labels, predict_labels, average='samples')
         micro_prec = precision_score(true_labels, predict_labels, average='micro')
         macro_prec = precision_score(true_labels, predict_labels, average='macro')
 
-        return macro_prec, micro_prec, sample_prec    
+        return macro_prec, micro_prec#, sample_prec
 
 
 class Recall_score(nn.Module):
@@ -117,11 +117,11 @@ class Recall_score(nn.Module):
 
     def forward(self, predict_labels, true_labels):
 
-        sample_rec = recall_score(true_labels, predict_labels, average='samples')
+        # sample_rec = recall_score(true_labels, predict_labels, average='samples')
         micro_rec = recall_score(true_labels, predict_labels, average='micro')
         macro_rec = recall_score(true_labels, predict_labels, average='macro')
 
-        return macro_rec, micro_rec, sample_rec
+        return macro_rec, micro_rec#, sample_rec
 
 
 class F1_score(nn.Module):
@@ -133,9 +133,9 @@ class F1_score(nn.Module):
 
         macro_f1 = f1_score(true_labels, predict_labels, average="macro")
         micro_f1 = f1_score(true_labels, predict_labels, average="micro")
-        sample_f1 = f1_score(true_labels, predict_labels, average="samples")
+        # sample_f1 = f1_score(true_labels, predict_labels, average="samples")
 
-        return macro_f1, micro_f1, sample_f1
+        return macro_f1, micro_f1#, sample_f1
 
 
 class F2_score(nn.Module):
@@ -147,9 +147,9 @@ class F2_score(nn.Module):
 
         macro_f2 = fbeta_score(true_labels, predict_labels, beta=2, average="macro")
         micro_f2 = fbeta_score(true_labels, predict_labels, beta=2, average="micro")
-        sample_f2 = fbeta_score(true_labels, predict_labels, beta=2, average="samples")
+        # sample_f2 = fbeta_score(true_labels, predict_labels, beta=2, average="samples")
 
-        return macro_f2, micro_f2, sample_f2
+        return macro_f2, micro_f2#, sample_f2
 
 class Hamming_loss(nn.Module):
 
@@ -188,9 +188,9 @@ class Accuracy_score(nn.Module):
         TP_sample = TP.sum(axis=1)
         union_sample = union.sum(axis=1)
 
-        sample_Acc = TP_sample/union_sample
+        # sample_Acc = TP_sample/union_sample
 
-        assert np.isfinite(sample_Acc).all(), 'Nan found in sample accuracy'
+        # assert np.isfinite(sample_Acc).all(), 'Nan found in sample accuracy'
 
         FP = (np.logical_and((predict_labels == 1), (true_labels == 0))).astype(int)
         TN = (np.logical_and((predict_labels == 0), (true_labels == 0))).astype(int)
@@ -207,7 +207,7 @@ class Accuracy_score(nn.Module):
 
         micro_Acc = (TP_cls.mean() + TN_cls.mean()) / (TP_cls.mean() + FP_cls.mean() + TN_cls.mean() + FN_cls.mean())
 
-        return macro_Acc, micro_Acc, sample_Acc.mean()
+        return macro_Acc, micro_Acc#, sample_Acc.mean()
 
 
 class One_error(nn.Module):

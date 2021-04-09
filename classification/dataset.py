@@ -90,7 +90,7 @@ def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use
     else:
         loc = np.argmax(lc, axis=-1)
         lc_hot = np.zeros_like(lc).astype(np.float32)
-        lc_hot[loc] = 1
+        lc_hot[loc] = lc[0]
              
     rt_sample = {'image': img, 'label': lc_hot, 'id': sample["id"]}
     
@@ -353,7 +353,8 @@ class BigEarthNet(data.Dataset):
         if CLC_s == True:
             self.n_classes = 19
         else:
-            self.n_classes = 43
+            self.n_classes = 1
+            # self.n_classes = 43
 
             # make sure parent dir exists
         assert os.path.exists(path)
@@ -365,7 +366,8 @@ class BigEarthNet(data.Dataset):
             sample_list = None
             total_sample_size = 0
             if subset == "train" or subset == "val":
-                file = os.path.join(ls_dir, f'bigearthnet_train_{data_size}.pkl')
+                # file = os.path.join(ls_dir, f'bigearthnet_train_{data_size}.pkl')
+                file = os.path.join(ls_dir, f'BigEarthNet_train_balanced_Permanently_irrigated_land_{data_size}.pkl')
                 print("BigEarthNet: Loading file ",file)
                 sample_list = pkl.load(open(file, "rb"))
                 total_sample_size = len(sample_list)
@@ -385,6 +387,7 @@ class BigEarthNet(data.Dataset):
             else:
                 pbar = tqdm(total=125866)  # 125866 samples in test set
                 file = os.path.join(ls_dir, 'bigearthnet_test.pkl')
+
                 sample_list = pkl.load(open(file, "rb"))
                 print("bigearthnet_test should be 125866:", len(sample_list))
 
@@ -408,7 +411,8 @@ class BigEarthNet(data.Dataset):
               "samples from the bigearthnet subset", subset)
 
         # import lables as a dictionary
-        label_file = os.path.join(ls_dir, 'BigEarthNet_labels.pkl')
+        # label_file = os.path.join(ls_dir, 'BigEarthNet_labels.pkl')
+        label_file = os.path.join(ls_dir, 'BigEarthNet_binary_labels_Permanently_irrigated_land.pkl')
 
         a_file = open(label_file, "rb")
         self.labels = pkl.load(a_file)
