@@ -100,8 +100,14 @@ CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_ba
  (optional) download pretrained models from `s3://sen12ms/pretrained`
 
 Some pretrained models: 
+**Duplex** 
 -  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
 - [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
+- sen12_crossaugment_epoch_1000.pth: 1000 epocs 
+
+**fusion**
+- [partial fusion - visionary-lake-62](https://wandb.ai/cal-capstone/hpt4/runs/1srlc7jr/overview?workspace=user-taeil) 250 epochs, 32K samples 
+- 
 
 ```
 ## remove dryrun param
@@ -111,13 +117,13 @@ aws s3 sync s3://sen12ms/pretrained . --dryrun
 convert moco models to pytorch resnet50 format
 ```
 # convert local file
-python classification/models/convert_moco_to_resnet50.py -i pretrained/moco/silvery-oath7-2rr3864e.pth -o pretrained/moco/
+python classification/models/convert_moco_to_resnet50.py -n 3 -i pretrained/moco/sen12_crossaugment_epoch_1000.pth -o pretrained/moco
 
 # download the model from W&B and convert for 12 channels 
-python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/367tz8vs -o pretrained/moco/ 
+python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/1srlc7jr -o pretrained/moco/ 
 
 # rename file with more user-friendly name (TODO automate this)
-mv pretrained/moco/367tz8vs_bb_converted.pth pretrained/moco/laced-water-61_bb_converted.pth
+mv pretrained/moco/1srlc7jr_bb_converted.pth pretrained/moco/visionary-lake-62_bb_converted.pth
 
 ```
 

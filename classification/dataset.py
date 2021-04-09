@@ -254,11 +254,13 @@ class SEN12MS(data.Dataset):
             elif subset == "val":
                 sample_list = sample_list[train_sample_size:]
                 pbar = tqdm(total=total_sample_size-train_sample_size)   # 18550 samples in val set
-            else:
+            elif subset == "test":
                 pbar = tqdm(total=18106)   # 18106 samples in test set
                 file =os.path.join(ls_dir, 'test_list.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 print("test_list should be 18106:", len(sample_list))
+            else:
+                raise NameError(f"unknown subset {subset}")
 
             pbar.set_description("[Load]")
 
