@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 from datetime import datetime 
 from tqdm import tqdm
+import json
 
 import torch
 import torch.optim as optim 
@@ -65,7 +66,7 @@ parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
 #                     help='use sentinel-1 data')
 parser.add_argument('--use_RGB', action='store_true', default=False,
                     help='use sentinel-2 RGB bands')
-parser.add_argument('--simple_scheme', action='store_true', default=True,
+parser.add_argument('--simple_scheme', action='store_true', default=False,
                     help='use IGBP simplified scheme; otherwise: IGBP original scheme')
 parser.add_argument('--label_type', type=str, choices = label_choices,
                     default='multi_label',
@@ -132,6 +133,8 @@ if not os.path.isdir(logs_dir):
     os.makedirs(logs_dir)
 
 # ----------------------------- saving files ---------------------------------
+sv_name_eval = '' # Used to save a file during the test evaluation
+
 def write_arguments_to_file(args, filename):
     with open(filename, 'w') as f:
         for key, value in vars(args).items():
@@ -149,9 +152,10 @@ def save_checkpoint(state, is_best, name):
 # -------------------------------- Main Program -------------------------------
 def main():
     global args
-    
+    global sv_name_eval
     # save configuration to file
     sv_name = datetime.strftime(datetime.now(), '%Y%m%d_%H%M%S')
+    sv_name_eval = sv_name
     print('saving file name is ', sv_name)
 
     write_arguments_to_file(args, os.path.join(logs_dir, sv_name+'_arguments.txt'))
@@ -277,12 +281,14 @@ def main():
             ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
                           '11', '12', '13', '14', '15', '16', '17', '18', '19']
         else:
-            numCls = 43
-            ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-                          '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-                          '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
-                          '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
-                          '41', '42', '43']
+            numCls = 1
+            ORG_LABELS = ['0','1']
+            # numCls = 43
+            # ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+            #               '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+            #               '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+            #               '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
+            #               '41', '42', '43']
     
     print('num_class: ', numCls)
 
@@ -422,17 +428,19 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
     f2_score_ = F2_score()
     hamming_loss_ = Hamming_loss()
     subset_acc_ = Subset_accuracy()
-    acc_score_ = Accuracy_score()  # from original script, not recommeded, seems not correct
+    # acc_score_ = Accuracy_score()  # from original script, not recommeded, seems not correct
     one_err_ = One_error()
-    coverage_err_ = Coverage_error()
-    rank_loss_ = Ranking_loss()
-    labelAvgPrec_score_ = LabelAvgPrec_score()
+    # coverage_err_ = Coverage_error()
+    # rank_loss_ = Ranking_loss()
+    # labelAvgPrec_score_ = LabelAvgPrec_score()
 
     calssification_report_ = calssification_report(ORG_LABELS)
 
     # -------------------------------- prediction
     y_true = []
     predicted_probs = []
+
+    pred_dic = {}
 
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_data_loader, desc="test")):
@@ -460,6 +468,15 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             predicted_probs += list(probs)
             y_true += list(labels)
 
+            for j in range(len(data['id'])):
+                pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
+                                           'prediction': str(list(list(probs)[j]))
+                                           }
+
+    fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
+    with open(fileout,'w') as fp:
+        json.dump(pred_dic, fp)
+
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels
     if label_type == 'multi_label':
@@ -474,18 +491,27 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
 
     # --------------------------- evaluation with metrics
     # general
-    macro_f1, micro_f1, sample_f1 = f1_score_(y_predicted, y_true)
-    macro_f2, micro_f2, sample_f2 = f2_score_(y_predicted, y_true)
-    macro_prec, micro_prec, sample_prec = prec_score_(y_predicted, y_true)
-    macro_rec, micro_rec, sample_rec = recal_score_(y_predicted, y_true)
+    # macro_f1, micro_f1, sample_f1 = f1_score_(y_predicted, y_true)
+    # macro_f2, micro_f2, sample_f2 = f2_score_(y_predicted, y_true)
+    # macro_prec, micro_prec, sample_prec = prec_score_(y_predicted, y_true)
+    # macro_rec, micro_rec, sample_rec = recal_score_(y_predicted, y_true)
+    # hamming_loss = hamming_loss_(y_predicted, y_true)
+    # subset_acc = subset_acc_(y_predicted, y_true)
+    # macro_acc, micro_acc, sample_acc = acc_score_(y_predicted, y_true)
+
+    macro_f1, micro_f1 = f1_score_(y_predicted, y_true)
+    macro_f2, micro_f2 = f2_score_(y_predicted, y_true)
+    macro_prec, micro_prec = prec_score_(y_predicted, y_true)
+    macro_rec, micro_rec = recal_score_(y_predicted, y_true)
     hamming_loss = hamming_loss_(y_predicted, y_true)
     subset_acc = subset_acc_(y_predicted, y_true)
-    macro_acc, micro_acc, sample_acc = acc_score_(y_predicted, y_true)
+    # macro_acc, micro_acc = acc_score_(y_predicted, y_true)
+
     # ranking-based
     one_error = one_err_(predicted_probs, y_true)
-    coverage_error = coverage_err_(predicted_probs, y_true)
-    rank_loss = rank_loss_(predicted_probs, y_true)
-    labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
+    # coverage_error = coverage_err_(predicted_probs, y_true)
+    # rank_loss = rank_loss_(predicted_probs, y_true)
+    # labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
 
     cls_report = calssification_report_(y_predicted, y_true)
 
@@ -498,25 +524,25 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
         info = {
             "macroPrec": macro_prec,
             "microPrec": micro_prec,
-            "samplePrec": sample_prec,
+            # "samplePrec": sample_prec,
             "macroRec": macro_rec,
             "microRec": micro_rec,
-            "sampleRec": sample_rec,
+            # "sampleRec": sample_rec,
             "macroF1": macro_f1,
             "microF1": micro_f1,
-            "sampleF1": sample_f1,
+            # "sampleF1": sample_f1,
             "macroF2": macro_f2,
             "microF2": micro_f2,
-            "sampleF2": sample_f2,
+            # "sampleF2": sample_f2,
             "HammingLoss": hamming_loss,
-            "subsetAcc": subset_acc,
-            "macroAcc": macro_acc,
-            "microAcc": micro_acc,
-            "sampleAcc": sample_acc,
+            # "subsetAcc": subset_acc,
+            # "macroAcc": macro_acc,
+            # "microAcc": micro_acc,
+            # "sampleAcc": sample_acc,
             "oneError": one_error,
-            "coverageError": coverage_error,
-            "rankLoss": rank_loss,
-            "labelAvgPrec": labelAvgPrec,
+            # "coverageError": coverage_error,
+            # "rankLoss": rank_loss,
+            # "labelAvgPrec": labelAvgPrec,
             "clsReport": cls_report,
             "multilabel_conf_mat": conf_mat,
             "class-wise Acc": cls_acc,
@@ -531,25 +557,25 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
         info = {
             "macroPrec": macro_prec,
             "microPrec": micro_prec,
-            "samplePrec": sample_prec,
+            # "samplePrec": sample_prec,
             "macroRec": macro_rec,
             "microRec": micro_rec,
-            "sampleRec": sample_rec,
+            # "sampleRec": sample_rec,
             "macroF1": macro_f1,
             "microF1": micro_f1,
-            "sampleF1": sample_f1,
+            # "sampleF1": sample_f1,
             "macroF2": macro_f2,
             "microF2": micro_f2,
-            "sampleF2": sample_f2,
+            # "sampleF2": sample_f2,
             "HammingLoss": hamming_loss,
             "subsetAcc": subset_acc,
             "macroAcc": macro_acc,
             "microAcc": micro_acc,
-            "sampleAcc": sample_acc,
+            # "sampleAcc": sample_acc,
             "oneError": one_error,
-            "coverageError": coverage_error,
-            "rankLoss": rank_loss,
-            "labelAvgPrec": labelAvgPrec,
+            # "coverageError": coverage_error,
+            # "rankLoss": rank_loss,
+            # "labelAvgPrec": labelAvgPrec,
             "clsReport": cls_report,
             "conf_mat": conf_mat,
             "AverageAcc": aa}
@@ -578,9 +604,10 @@ def train(trainloader, model, optimizer, lossfunc, label_type, epoch, use_cuda):
         if label_type == 'multi_label':
             labels = data["label"]
         else:
-           labels = (torch.max(data["label"], 1)[1]).type(torch.long) 
-               
-        # move data to gpu if model is on gpu
+           labels = (torch.max(data["label"], 1)[1]).type(torch.long)
+           # labels = data["label"]
+
+           # move data to gpu if model is on gpu
         if use_cuda:
             bands = bands.to(torch.device("cuda"))
             labels = labels.to(torch.device("cuda"))
@@ -613,11 +640,11 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
     f2_score_ = F2_score()
     hamming_loss_ = Hamming_loss()
     subset_acc_ = Subset_accuracy()
-    acc_score_ = Accuracy_score()
+    # acc_score_ = Accuracy_score()
     one_err_ = One_error()
-    coverage_err_ = Coverage_error()
-    rank_loss_ = Ranking_loss()
-    labelAvgPrec_score_ = LabelAvgPrec_score()
+    # coverage_err_ = Coverage_error()
+    # rank_loss_ = Ranking_loss()
+    # labelAvgPrec_score_ = LabelAvgPrec_score()
 
     # set model to evaluation mode
     model.eval()
@@ -651,8 +678,7 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
             labels = labels.cpu().numpy() # keep true & pred label at same loc.
             predicted_probs += list(probs)
             y_true += list(labels)
-            
-        
+
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels 
     if label_type == 'multi_label':
@@ -666,44 +692,51 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
     y_true = np.asarray(y_true)
     
 
-    macro_f1, micro_f1, sample_f1 = f1_score_(y_predicted, y_true)
-    macro_f2, micro_f2, sample_f2 = f2_score_(y_predicted, y_true)
-    macro_prec, micro_prec, sample_prec = prec_score_(y_predicted, y_true)
-    macro_rec, micro_rec, sample_rec = recal_score_(y_predicted, y_true)
+    # macro_f1, micro_f1, sample_f1 = f1_score_(y_predicted, y_true)
+    # macro_f2, micro_f2, sample_f2 = f2_score_(y_predicted, y_true)
+    # macro_prec, micro_prec, sample_prec = prec_score_(y_predicted, y_true)
+    # macro_rec, micro_rec, sample_rec = recal_score_(y_predicted, y_true)
+    # hamming_loss = hamming_loss_(y_predicted, y_true)
+    # subset_acc = subset_acc_(y_predicted, y_true)
+    # macro_acc, micro_acc, sample_acc = acc_score_(y_predicted, y_true)
+
+    macro_f1, micro_f1 = f1_score_(y_predicted, y_true)
+    macro_f2, micro_f2 = f2_score_(y_predicted, y_true)
+    macro_prec, micro_prec = prec_score_(y_predicted, y_true)
+    macro_rec, micro_rec = recal_score_(y_predicted, y_true)
     hamming_loss = hamming_loss_(y_predicted, y_true)
     subset_acc = subset_acc_(y_predicted, y_true)
-    macro_acc, micro_acc, sample_acc = acc_score_(y_predicted, y_true)
-
+    # macro_acc, micro_acc = acc_score_(y_predicted, y_true)
     # Note that below 4 ranking-based metrics are not applicable to single-label
     # (multi-class) classification, but they will still show the scores during 
     # validation on tensorboard
     one_error = one_err_(predicted_probs, y_true)
-    coverage_error = coverage_err_(predicted_probs, y_true)
-    rank_loss = rank_loss_(predicted_probs, y_true)
-    labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
+    # coverage_error = coverage_err_(predicted_probs, y_true)
+    # rank_loss = rank_loss_(predicted_probs, y_true)
+    # labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
 
     info = {
             "macroPrec" : macro_prec,
             "microPrec" : micro_prec,
-            "samplePrec" : sample_prec,
+            # "samplePrec" : sample_prec,
             "macroRec" : macro_rec,
             "microRec" : micro_rec,
-            "sampleRec" : sample_rec,
+            # "sampleRec" : sample_rec,
             "macroF1" : macro_f1,
             "microF1" : micro_f1,
-            "sampleF1" : sample_f1,
+            # "sampleF1" : sample_f1,
             "macroF2" : macro_f2,
             "microF2" : micro_f2,
-            "sampleF2" : sample_f2,
+            # "sampleF2" : sample_f2,
             "HammingLoss" : hamming_loss,
             "subsetAcc" : subset_acc,
-            "macroAcc" : macro_acc,
-            "microAcc" : micro_acc,
-            "sampleAcc" : sample_acc,
+            # "macroAcc" : macro_acc,
+            # "microAcc" : micro_acc,
+            # "sampleAcc" : sample_acc,
             "oneError" : one_error,
-            "coverageError" : coverage_error,
-            "rankLoss" : rank_loss,
-            "labelAvgPrec" : labelAvgPrec
+            # "coverageError" : coverage_error,
+            # "rankLoss" : rank_loss,
+            # "labelAvgPrec" : labelAvgPrec
             }
 
     wandb.run.summary.update(info)
@@ -711,12 +744,13 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
         wandb.log({tag: value, 'epoch': epoch})
         # val_writer.add_scalar(tag, value, epoch)
 
-    print('Validation microPrec: {:.6f} microF1: {:.6f} sampleF1: {:.6f} microF2: {:.6f} sampleF2: {:.6f}'.format(
+    # print('Validation microPrec: {:.6f} microF1: {:.6f} sampleF1: {:.6f} microF2: {:.6f} sampleF2: {:.6f}'.format(
+    print('Validation microPrec: {:.6f} microF1: {:.6f} microF2: {:.6f}'.format(
             micro_prec,
             micro_f1,
-            sample_f1,
+            # sample_f1,
             micro_f2,
-            sample_f2
+            # sample_f2
             ))
     return micro_f1
 
