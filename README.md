@@ -57,7 +57,7 @@ In this folder, other utilities that can help to load, process, or analyze the d
 ```
 export WANDB_API_KEY=<use your API key>
 export WANDB_ENTITY=cal-capstone
-export WANDB_PROJECT=SEN12MS
+export WANDB_PROJECT=scene_classification
 #export WANDB_MODE=dryrun
 ```
 
@@ -95,38 +95,49 @@ export WANDB_PROJECT=SEN12MS
 CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_baseline --data_dir /home/ubuntu/SEN12MS/data/sen12ms/data --label_split_dir /home/ubuntu/SEN12MS/splits --use_RGB --IGBP_simple --label_type multi_label --threshold 0.1 --model ResNet50 --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1000 --epochs 1
 
 ```
- 
+
+#### convert Moco pretrained model for sen12ms eval 
+ (optional) download pretrained models from `s3://sen12ms/pretrained`
+
+Some pretrained models: 
+**Duplex** 
+-  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
+- [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
+- sen12_crossaugment_epoch_1000.pth: 1000 epocs 
+
+**fusion**
+- [partial fusion - visionary-lake-62](https://wandb.ai/cal-capstone/hpt4/runs/1srlc7jr/overview?workspace=user-taeil) 250 epochs, 32K samples 
+- 
+
+```
+## remove dryrun param
+aws s3 sync s3://sen12ms/pretrained . --dryrun 
+```
+
+convert moco models to pytorch resnet50 format
+```
+# convert local file
+python classification/models/convert_moco_to_resnet50.py -n 3 -i pretrained/moco/sen12_crossaugment_epoch_1000.pth -o pretrained/moco
+
+# download the model from W&B and convert for 12 channels 
+python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/1srlc7jr -o pretrained/moco/ 
+
+# rename file with more user-friendly name (TODO automate this)
+mv pretrained/moco/1srlc7jr_bb_converted.pth pretrained/moco/visionary-lake-62_bb_converted.pth
+
+```
+
  #### finetune (training from pre-trained model)   :anguished:
  
  These arguments will be saved into a .txt file automatically. This .txt file can be used in the testing for reading the arguments. The `threshold` parameter is used to filter out the labels with lower probabilities. Note that this threshold has no influence on single-label classification. More explanation of the arguments is in the `main_train.py` file. Note that the probability label file and the split lists should be put under the same folder during training and testing. The script reads .pkl format instead of .txt files.
 - `test.py`: This python script is used to test the model. It is a semi-automatic script and reads the argument file generated in the training process to decide the label type, model type etc. However, it still requires user to input some basic arguments, such as the path of data directory. Here is an example of the input arguments:  
-- `convert_moco_to_resnet50.py`: convert moco models to pytorch resnet50 format
-
-download pretrained models from `s3://sen12ms/pretrained_sup`
-```
-## remove dryrun param
-aws s3 sync s3://sen12ms/pretrained_sup . --dryrun 
-```
-
-convert models 
-```
-# convert backbone to resnet50 
-python classification/models/convert_moco_to_resnet50.py -i pretrained/moco/silvery-oath7-2rr3864e.pth 
-
-# convert query-encoder to resnet50 
-python classification/models/convert_moco_to_resnet50.py -i pretrained/moco/silvery-oath7-2rr3864e.pth -bb false 
-
-```
-
-finetune with pretrained models 
--  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
-- [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
 
  ``` 
-CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --use_RGB --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 2048 --epochs 500 --pt_name silvery-oath7-2rr3864e --pt_dir pretrained/moco --eval
+CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --sensor_type s1s2 --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 2048 --epochs 500 --pt_name silvery-oath7-2rr3864e --pt_dir pretrained/moco --eval
  ```
 - `pt_name`: the name of the model (wandb run name)
 - `--eval`: remove this param if you want to skip evaluating after finishing the training 
+- `sensor_type`: s1, s2, s1s2 
 
 Evaluate trained models for classification (this is only if you downloaded the trained model)
 ```

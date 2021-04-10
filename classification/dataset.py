@@ -58,13 +58,14 @@ def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD)
         else:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_LD_BIGEARTHNET)
-    # load only RGB   
+
+    # load only RGB
     if use_RGB and use_s2==False:
         if not for_bigearthnet:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB)
         else:
             img = load_s2(sample["s2"], imgTransform, s2_band=S2_BANDS_RGB_BIGEARTHNET)
-        
+
     # load s1 data
     if use_s1:
         if use_s2 or use_RGB:
@@ -253,11 +254,13 @@ class SEN12MS(data.Dataset):
             elif subset == "val":
                 sample_list = sample_list[train_sample_size:]
                 pbar = tqdm(total=total_sample_size-train_sample_size)   # 18550 samples in val set
-            else:
+            elif subset == "test":
                 pbar = tqdm(total=18106)   # 18106 samples in test set
                 file =os.path.join(ls_dir, 'test_list.pkl')
                 sample_list = pkl.load(open(file, "rb"))
                 print("test_list should be 18106:", len(sample_list))
+            else:
+                raise NameError(f"unknown subset {subset}")
 
             pbar.set_description("[Load]")
 

@@ -162,24 +162,24 @@ def main():
     use_s1 = (args.sensor_type == 's1') | (args.sensor_type == 's1s2')
     use_s2 = (args.sensor_type == 's2') | (args.sensor_type == 's1s2')
 
-    data_dir = os.path.join("data", args.dataset, "data")
+    dataset = args.dataset
+    data_dir = os.path.join("data", dataset, "data")
 
     bands_mean = {}
     bands_std = {}
     train_dataGen = None
     val_dataGen = None
     test_dataGen = None
-    if not args.use_bigearthnet:
-        print("Using SEN12MS dataset")
+
+    print(f"Using {dataset} dataset")
+    if dataset == 'sen12ms':
         bands_mean = {'s1_mean': [-11.76858, -18.294598],
                       's2_mean': [1226.4215, 1137.3799, 1139.6792, 1350.9973, 1932.9058,
                                   2211.1584, 2154.9846, 2409.1128, 2001.8622, 1356.0801]}
         bands_std = {'s1_std': [4.525339, 4.3586307],
                      's2_std': [741.6254, 740.883, 960.1045, 946.76056, 985.52747,
                                 1082.4341, 1057.7628, 1136.1942, 1132.7898, 991.48016]}
-    else:
-        # Assume bigearthnet
-        print("Using BigEarthNet dataset")
+    elif dataset == 'bigearthnet':
         # THE S2 BAND STATISTICS WERE PROVIDED BY THE BIGEARTHNET TEAM
         bands_mean = {'s1_mean': [-12.5145, -18.6447],
                       's2_mean': [340.76769064,429.9430203,614.21682446,590.23569706,950.68368468,1792.46290469,
@@ -187,10 +187,12 @@ def main():
         bands_std = {'s1_std': [4.7546, 4.2990],
                      's2_std': [554.81258967,572.41639287,582.87945694,675.88746967,729.89827633,1096.01480586,
                                 1273.45393088,1365.45589904,1356.13789355,1302.3292881,1079.19066363,818.86747235]}
+    else:
+        raise NameError(f"unknown dataset: {dataset}")
 
     # load datasets 
     imgTransform = transforms.Compose([ToTensor(),Normalize(bands_mean, bands_std)])
-    if not args.use_bigearthnet:
+    if dataset == 'sen12ms':
         train_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
@@ -261,7 +263,7 @@ def main():
         cudnn.benchmark = True
 
     # define number of classes
-    if not args.use_bigearthnet:
+    if dataset == 'sen12ms':
         if args.simple_scheme:
             numCls = 10
             ORG_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
@@ -281,7 +283,6 @@ def main():
                           '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
                           '31', '32', '33', '34', '35', '36', '37', '38', '39', '40',
                           '41', '42', '43']
-
     
     print('num_class: ', numCls)
 
