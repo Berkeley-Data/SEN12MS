@@ -108,6 +108,9 @@ parser.add_argument('--pt_name', '-pn', type=str, default=None,
 parser.add_argument('--pt_type', '-pt', type=str, default='bb',
                     help='bb (backbone) or qe (query encoder)', )
 
+# Dump predicted data
+parser.add_argument('--output_pred', action='store_true', default=False,
+                    help='Prediction data')
 args = parser.parse_args()
 
 wandb.init(config=args)
@@ -465,17 +468,19 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             predicted_probs += list(probs)
             y_true += list(labels)
 
-            # Cache the y_true and y_prediction in a dictionary for analysis
-            for j in range(len(data['id'])):
-                pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
-                                           'prediction': str(list(list(probs)[j]))
-                                           }
+            if args.output_pred:
+                # Cache the y_true and y_prediction in a dictionary for analysis
+                for j in range(len(data['id'])):
+                    pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
+                                               'prediction': str(list(list(probs)[j]))
+                                               }
 
-    # Store the  y_true and y_prediction in a json file under checkpoint folder.
-    # This file can be viewed under Files tab in wandb dashboard for a run
-    fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
-    with open(fileout,'w') as fp:
-        json.dump(pred_dic, fp)
+    if args.output_pred:
+        # Store the  y_true and y_prediction in a json file under checkpoint folder.
+        # This file can be viewed under Files tab in wandb dashboard for a run
+        fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
+        with open(fileout,'w') as fp:
+            json.dump(pred_dic, fp)
 
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels
