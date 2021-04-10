@@ -55,8 +55,6 @@ parser.add_argument('--label_split_dir', type=str, default=None,
 parser.add_argument('--data_size', type=str, default="full",
                     help="64, 128, 256, 1000, 1024, full")
 # input/output
-parser.add_argument('--use_bigearthnet', action='store_true', default=False,
-                    help='Use sen12ms data or bigearthnet')
 parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
                     default='s1s2',
                     help="s1, s2, or s1s2 (default: s1s2)")
@@ -466,11 +464,14 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             predicted_probs += list(probs)
             y_true += list(labels)
 
+            # Cache the y_true and y_prediction in a dictionary for analysis
             for j in range(len(data['id'])):
                 pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
                                            'prediction': str(list(list(probs)[j]))
                                            }
 
+    # Store the  y_true and y_prediction in a json file under checkpoint folder.
+    # This file can be viewed under Files tab in wandb dashboard for a run
     fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
     with open(fileout,'w') as fp:
         json.dump(pred_dic, fp)
