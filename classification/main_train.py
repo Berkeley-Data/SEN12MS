@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 from datetime import datetime 
 from tqdm import tqdm
+import json
 
 import torch
 import torch.optim as optim 
@@ -54,8 +55,6 @@ parser.add_argument('--label_split_dir', type=str, default=None,
 parser.add_argument('--data_size', type=str, default="full",
                     help="64, 128, 256, 1000, 1024, full")
 # input/output
-parser.add_argument('--use_bigearthnet', action='store_true', default=False,
-                    help='Use sen12ms data or bigearthnet')
 parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
                     default='s1s2',
                     help="s1, s2, or s1s2 (default: s1s2)")
@@ -109,6 +108,9 @@ parser.add_argument('--pt_name', '-pn', type=str, default=None,
 parser.add_argument('--pt_type', '-pt', type=str, default='bb',
                     help='bb (backbone) or qe (query encoder)', )
 
+# Dump predicted data
+parser.add_argument('--output_pred', action='store_true', default=False,
+                    help='Prediction data')
 args = parser.parse_args()
 
 wandb.init(config=args)
@@ -132,6 +134,8 @@ if not os.path.isdir(logs_dir):
     os.makedirs(logs_dir)
 
 # ----------------------------- saving files ---------------------------------
+sv_name_eval = '' # Used to save a file during the test evaluation
+
 def write_arguments_to_file(args, filename):
     with open(filename, 'w') as f:
         for key, value in vars(args).items():
@@ -149,9 +153,10 @@ def save_checkpoint(state, is_best, name):
 # -------------------------------- Main Program -------------------------------
 def main():
     global args
-    
+    global sv_name_eval
     # save configuration to file
     sv_name = datetime.strftime(datetime.now(), '%Y%m%d_%H%M%S')
+    sv_name_eval = sv_name
     print('saving file name is ', sv_name)
 
     write_arguments_to_file(args, os.path.join(logs_dir, sv_name+'_arguments.txt'))
@@ -181,10 +186,11 @@ def main():
                                 1082.4341, 1057.7628, 1136.1942, 1132.7898, 991.48016]}
     elif dataset == 'bigearthnet':
         # THE S2 BAND STATISTICS WERE PROVIDED BY THE BIGEARTHNET TEAM
-        bands_mean = {'s1_mean': [-12.5145, -18.6447],
+        # Source: https://git.tu-berlin.de/rsim/bigearthnet-models-tf/-/blob/master/BigEarthNet.py
+        bands_mean = {'s1_mean': [-12.619993, -19.290445],
                       's2_mean': [340.76769064,429.9430203,614.21682446,590.23569706,950.68368468,1792.46290469,
                                   2075.46795189,2218.94553375,2266.46036911,2246.0605464,1594.42694882,1009.32729131]}
-        bands_std = {'s1_std': [4.7546, 4.2990],
+        bands_std = {'s1_std': [5.115911, 5.464428],
                      's2_std': [554.81258967,572.41639287,582.87945694,675.88746967,729.89827633,1096.01480586,
                                 1273.45393088,1365.45589904,1356.13789355,1302.3292881,1079.19066363,818.86747235]}
     else:
@@ -434,6 +440,8 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
     y_true = []
     predicted_probs = []
 
+    pred_dic = {}
+
     with torch.no_grad():
         for batch_idx, data in enumerate(tqdm(test_data_loader, desc="test")):
 
@@ -459,6 +467,20 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             labels = labels.cpu().numpy()  # keep true & pred label at same loc.
             predicted_probs += list(probs)
             y_true += list(labels)
+
+            if args.output_pred:
+                # Cache the y_true and y_prediction in a dictionary for analysis
+                for j in range(len(data['id'])):
+                    pred_dic[data['id'][j]] = {'true': str(list(list(labels)[j])),
+                                               'prediction': str(list(list(probs)[j]))
+                                               }
+
+    if args.output_pred:
+        # Store the  y_true and y_prediction in a json file under checkpoint folder.
+        # This file can be viewed under Files tab in wandb dashboard for a run
+        fileout = f"{checkpoint_dir}/{sv_name_eval}_{args.model}_{label_type}.json"
+        with open(fileout,'w') as fp:
+            json.dump(pred_dic, fp)
 
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels
@@ -651,8 +673,7 @@ def val(valloader, model, optimizer, label_type, epoch, use_cuda):
             labels = labels.cpu().numpy() # keep true & pred label at same loc.
             predicted_probs += list(probs)
             y_true += list(labels)
-            
-        
+
     predicted_probs = np.asarray(predicted_probs)
     # convert predicted probabilities into one/multi-hot labels 
     if label_type == 'multi_label':
