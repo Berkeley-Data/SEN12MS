@@ -55,6 +55,8 @@ parser.add_argument('--label_split_dir', type=str, default=None,
 parser.add_argument('--data_size', type=str, default="full",
                     help="64, 128, 256, 1000, 1024, full")
 # input/output
+parser.add_argument('--use_fusion', action='store_true', default=False,
+                    help='use 12 channels with zero padding')
 parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
                     default='s1s2',
                     help="s1, s2, or s1s2 (default: s1s2)")
@@ -203,40 +205,40 @@ def main():
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
                                 use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                                IGBP_s=args.simple_scheme, data_size=args.data_size)
+                                IGBP_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         val_dataGen = SEN12MS(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
                               use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                              IGBP_s=args.simple_scheme, data_size=args.data_size)
+                              IGBP_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         if args.eval:
             test_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
                                    use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                                   IGBP_s=args.simple_scheme)
+                                   IGBP_s=args.simple_scheme, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
     else:
         # Assume bigearthnet
         train_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
                                 use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                                CLC_s=args.simple_scheme, data_size=args.data_size)
+                                CLC_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         val_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
                               use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                              CLC_s=args.simple_scheme, data_size=args.data_size)
+                              CLC_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         if args.eval:
             test_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
                                    use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
-                                   CLC_s=args.simple_scheme)
+                                   CLC_s=args.simple_scheme, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
     
     # number of input channels
     n_inputs = train_dataGen.n_inputs 

@@ -99,15 +99,7 @@ CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_ba
 #### convert Moco pretrained model for sen12ms eval 
  (optional) download pretrained models from `s3://sen12ms/pretrained`
 
-Some pretrained models: 
-**Duplex** 
--  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
-- [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
-- sen12_crossaugment_epoch_1000.pth: 1000 epocs 
 
-**fusion**
-- [partial fusion - visionary-lake-62](https://wandb.ai/cal-capstone/hpt4/runs/1srlc7jr/overview?workspace=user-taeil) 250 epochs, 32K samples 
-- 
 
 ```
 ## remove dryrun param

@@ -34,7 +34,7 @@ def load_s2(path, imgTransform, s2_band):
 
 
 # util function for reading s1 data
-def load_s1(path, imgTransform):
+def load_s1_origin(path, imgTransform):
     with rasterio.open(path) as data:
         s1 = data.read()
     s1 = s1.astype(np.float32)
@@ -45,7 +45,91 @@ def load_s1(path, imgTransform):
         s1 += 1
     s1 = s1.astype(np.float32)
     return s1
-    
+
+# this is from Colorado.
+# [todo] taeil: need to understand the difference
+def load_s1(path, imgTransform):
+    with rasterio.open(path) as data:
+        band1 = data.read(1)
+        band2 = data.read(2)
+
+    band1 = band1.astype(np.float32)
+    band1 = np.nan_to_num(band1)
+    band1 = np.clip(band1, -25, 0)
+    if not imgTransform:
+        band1 /= 25
+        band1 += 1
+
+    band2 = band2.astype(np.float32)
+    band2 = np.nan_to_num(band2)
+    band2 = np.clip(band2, -25, 0)
+    if not imgTransform:
+        band2 /= 25
+        band2 += 1
+
+    # band3 = abs(band2 - band1)
+    # band3 /= 25
+
+    s1 = np.stack((band1, band2)) # , band3))
+    return s1
+
+
+def gen_s1s2_fusion_image(sample, use_RGB, sensor_type, dataset, imgTransform):
+
+    if dataset == "sen12ms":
+        s2_band_to_use = S2_BANDS_RGB if use_RGB else S2_BANDS_LD
+    elif dataset == "bigearthnet":
+        s2_band_to_use = S2_BANDS_RGB if use_RGB else S2_BANDS_LD_BIGEARTHNET
+    else:
+        raise NameError(f"unknown dataset: {dataset}")
+
+    if sensor_type == "s1":
+        s1_img = load_s1(sample["s1"], imgTransform)
+        s2_img = np.zeros((10, 256, 256), dtype=float)
+    elif sensor_type == "s2":
+        s1_img = np.zeros((2, 256, 256), dtype=float)
+        s2_img = load_s2(sample["s2"], imgTransform, s2_band=s2_band_to_use)
+    elif sensor_type == "s1s2":
+        s1_img = load_s1(sample["s1"], imgTransform)
+        s2_img = load_s2(sample["s2"], imgTransform, s2_band=s2_band_to_use)
+    else:
+        raise NameError(f"wrong sensor {sensor_type}")
+
+    return np.concatenate((s2_img, s1_img), axis=0)
+
+
+def load_fusion_sample(sample, labels, label_type, threshold, imgTransform, sensor_type, use_RGB, IGBP_s,
+                    dataset="sen12ms", convert_scheme=True):
+
+    # loading 12 channel images with zero padding if s1 or s2 is selected.
+    img = gen_s1s2_fusion_image(sample, use_RGB, sensor_type, dataset, imgTransform)
+
+    # load label
+    lc = labels[sample["id"]]
+
+    # covert label to IGBP simplified scheme
+    if convert_scheme:
+        if IGBP_s:
+            cls1 = sum(lc[0:5]);
+            cls2 = sum(lc[5:7]);
+            cls3 = sum(lc[7:9]);
+            cls6 = lc[11] + lc[13];
+            lc = np.asarray([cls1, cls2, cls3, lc[9], lc[10], cls6, lc[12], lc[14], lc[15], lc[16]])
+
+    if label_type == "multi_label":
+        lc_hot = (lc >= threshold).astype(np.float32)
+    else:
+        loc = np.argmax(lc, axis=-1)
+        lc_hot = np.zeros_like(lc).astype(np.float32)
+        lc_hot[loc] = 1
+
+    rt_sample = {'image': img, 'label': lc_hot, 'id': sample["id"]}
+
+    if imgTransform is not None:
+        rt_sample = imgTransform(rt_sample)
+
+    return rt_sample
+
 
 # util function for reading data from single sample
 def load_sample(sample, labels, label_type, threshold, imgTransform, use_s1, use_s2, use_RGB, IGBP_s,
@@ -129,7 +213,7 @@ class SEN12MS(data.Dataset):
 
     def __init__(self, path, ls_dir=None, imgTransform=None, 
                  label_type="multi_label", threshold=0.1, subset="train",
-                 use_s2=False, use_s1=False, use_RGB=False, IGBP_s=True, data_size="full"):
+                 use_s2=False, use_s1=False, use_RGB=False, IGBP_s=True, data_size="full", sensor_type=None, use_fusion=False):
         """Initialize the dataset"""
 
         # inizialize
@@ -137,6 +221,7 @@ class SEN12MS(data.Dataset):
         self.imgTransform = imgTransform
         self.threshold = threshold
         self.label_type = label_type
+        self.sensor_type = sensor_type
 
         # make sure input parameters are okay
         if not (use_s2 or use_s1 or use_RGB):
@@ -146,12 +231,13 @@ class SEN12MS(data.Dataset):
         self.use_s1 = use_s1
         self.use_RGB = use_RGB
         self.IGBP_s = IGBP_s
+        self.use_fusion = use_fusion
         
         assert subset in ["train", "val", "test"]
         assert label_type in ["multi_label", "single_label"] # new !!
         
         # provide number of input channels
-        self.n_inputs = get_ninputs(use_s1, use_s2, use_RGB)
+        self.n_inputs = 12 if self.use_fusion else get_ninputs(use_s1, use_s2, use_RGB)
 
         # provide number of IGBP classes 
         if IGBP_s == True:
@@ -305,7 +391,11 @@ class SEN12MS(data.Dataset):
         # get and load sample from index file
         sample = self.samples[index]
         labels = self.labels
-        return load_sample(sample, labels, self.label_type, self.threshold, self.imgTransform, 
+        if self.use_fusion:
+            return load_fusion_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
+                                      self.sensor_type, self.use_RGB, self.IGBP_s)
+        else:
+            return load_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
                            self.use_s1, self.use_s2, self.use_RGB, self.IGBP_s)
 
     def __len__(self):
@@ -326,13 +416,15 @@ class BigEarthNet(data.Dataset):
     #               - patch.jsom
     def __init__(self, path, ls_dir=None, imgTransform=None,
                  label_type="multi_label", threshold=0.1, subset="train",
-                 use_s2=False, use_s1=False, use_RGB=False, CLC_s=True, data_size="full"):
+                 use_s2=False, use_s1=False, use_RGB=False, CLC_s=True, data_size="full", sensor_type="s1s2", use_fusion=False):
 
         # inizialize
         super(BigEarthNet, self).__init__()
         self.imgTransform = imgTransform
         self.threshold = threshold
         self.label_type = label_type
+        self.sensor_type = sensor_type
+        self.use_fusion = use_fusion
 
         # make sure input parameters are okay
         if not (use_s2 or use_s1 or use_RGB):
@@ -347,7 +439,7 @@ class BigEarthNet(data.Dataset):
         assert label_type in ["multi_label", "single_label"]  # new !!
 
         # provide number of input channels
-        self.n_inputs = get_ninputs(use_s1, use_s2, use_RGB)
+        self.n_inputs = 12 if self.use_fusion else get_ninputs(use_s1, use_s2, use_RGB)
 
         # provide number of CORINE Land Cover(CLC) classes
         # CLC -> Original CORINE Land Cover(CLC) - 43
@@ -422,8 +514,12 @@ class BigEarthNet(data.Dataset):
         # get and load sample from index file
         sample = self.samples[index]
         labels = self.labels
-        return load_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
-                           self.use_s1, self.use_s2, self.use_RGB, self.CLC_s, for_bigearthnet=True, convert_scheme=False)
+        if self.use_fusion:
+            return load_fusion_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
+                    self.sensor_type, self.use_RGB, self.CLC_s, dataset="bigearthnet", convert_scheme=False)
+        else:
+            return load_sample(sample, labels, self.label_type, self.threshold, self.imgTransform,
+                               self.use_s1, self.use_s2, self.use_RGB, self.CLC_s, for_bigearthnet=True, convert_scheme=False)
 
     def __len__(self):
         """Get number of samples in the dataset"""
@@ -479,8 +575,8 @@ class ToTensor(object):
     def __call__(self, rt_sample):
         
         img, label, sample_id = rt_sample['image'], rt_sample['label'], rt_sample['id']
-        
-        rt_sample = {'image': torch.tensor(img), 'label':label, 'id':sample_id}
+
+        rt_sample = {'image': torch.tensor(img, dtype=torch.float32), 'label':label, 'id':sample_id}
         return rt_sample
 
 
