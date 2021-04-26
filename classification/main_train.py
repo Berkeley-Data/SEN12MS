@@ -66,7 +66,7 @@ parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
 #                     help='use sentinel-1 data')
 parser.add_argument('--use_RGB', action='store_true', default=False,
                     help='use sentinel-2 RGB bands')
-parser.add_argument('--simple_scheme', action='store_true', default=True,
+parser.add_argument('--simple_scheme', action='store_true', default=False,
                     help='use IGBP simplified scheme; otherwise: IGBP original scheme')
 parser.add_argument('--label_type', type=str, choices = label_choices,
                     default='multi_label',
@@ -243,7 +243,8 @@ def main():
     # number of input channels
     n_inputs = train_dataGen.n_inputs 
     print('input channels =', n_inputs)
-    
+    wandb.config.update({"input_channels": n_inputs})
+
     # set up dataloaders
     train_data_loader = DataLoader(train_dataGen, 
                                    batch_size=args.batch_size, 
@@ -293,6 +294,7 @@ def main():
                           '41', '42', '43']
     
     print('num_class: ', numCls)
+    wandb.config.update({"n_class": numCls})
 
     # define model
     if args.model == 'VGG16':
