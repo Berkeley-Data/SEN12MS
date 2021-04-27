@@ -504,7 +504,7 @@ class BigEarthNet(data.Dataset):
         # import lables as a dictionary
         label_file = None
         if CLC_s == True:
-            label_file = os.path.join(ls_dir, 'bigearthnet_test.pkl')
+            label_file = os.path.join(ls_dir, 'BigEarthNet_labels.pkl')
         else:
             label_file = os.path.join(ls_dir, 'BigEarthNet_labels43.pkl')
 
