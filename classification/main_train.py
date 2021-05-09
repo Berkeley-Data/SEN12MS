@@ -319,7 +319,7 @@ def main():
         model = DenseNet201(n_inputs, numCls)
     # finetune moco pre-trained model
     elif args.model.startswith("Moco"):
-        pt_path = os.path.join(args.pt_dir, f"{args.pt_name}_{args.pt_type}_converted.pth")
+        pt_path = os.path.join(args.pt_dir, f"{args.pt_name}.pth")
         print(pt_path)
         assert os.path.exists(pt_path)
         if args.model == 'Moco':
