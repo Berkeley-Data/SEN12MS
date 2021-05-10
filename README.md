@@ -68,7 +68,6 @@ The files needed for training and evaluating SEN12MS-based classification models
 - `dataset.py`: This python script reads the data from SEN12MS and the probability label file. It converts the probability labels into single-label or multi-label annotations.
 - `main_train.py`: This python script is used to train the model. It requires several input arguments to specify the scenario for training (e.g. label type, simplified/original IGBP scheme, models, learning rate etc.). Here is an example of the input arguments:  
 ```
-CUDA_VISIBLE_DEVICES=0 \  
 python main_train.py \  
   --exp_name experiment_name \  
   --data_dir /work/share/sen12ms \  
@@ -99,10 +98,6 @@ CUDA_VISIBLE_DEVICES=0 python classification/main_train.py --exp_name sem12ms_ba
 #### convert Moco pretrained model for sen12ms eval 
  (optional) download pretrained models from `s3://sen12ms/pretrained`
 
-Some pretrained models: 
--  [vivid-resonance-73](https://wandb.ai/cjrd/BDOpenSelfSup-tools/runs/3qjvxo2p)
-- [silvery-oath-7](https://wandb.ai/cal-capstone/hpt2/runs/2rr3864e) 
-
 ```
 ## remove dryrun param
 aws s3 sync s3://sen12ms/pretrained . --dryrun 
@@ -111,13 +106,13 @@ aws s3 sync s3://sen12ms/pretrained . --dryrun
 convert moco models to pytorch resnet50 format
 ```
 # convert local file
-python classification/models/convert_moco_to_resnet50.py -i pretrained/moco/silvery-oath7-2rr3864e.pth -o pretrained/moco/
+python classification/models/convert_moco_to_resnet50.py -n 3 -i pretrained/moco/sen12_crossaugment_epoch_1000.pth -o pretrained/moco
 
 # download the model from W&B and convert for 12 channels 
-python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/367tz8vs -o pretrained/moco/ 
+python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/1srlc7jr -o pretrained/moco/ 
 
 # rename file with more user-friendly name (TODO automate this)
-mv pretrained/moco/367tz8vs_bb_converted.pth pretrained/moco/laced-water-61_bb_converted.pth
+mv pretrained/moco/1srlc7jr_bb_converted.pth pretrained/moco/visionary-lake-62_bb_converted.pth
 
 ```
 
@@ -127,15 +122,16 @@ mv pretrained/moco/367tz8vs_bb_converted.pth pretrained/moco/laced-water-61_bb_c
 - `test.py`: This python script is used to test the model. It is a semi-automatic script and reads the argument file generated in the training process to decide the label type, model type etc. However, it still requires user to input some basic arguments, such as the path of data directory. Here is an example of the input arguments:  
 
  ``` 
-CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --data_dir data/sen12ms/data --label_split_dir splits --sensor_type s1s2 --IGBP_simple --label_type single_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 2048 --epochs 500 --pt_name silvery-oath7-2rr3864e --pt_dir pretrained/moco --eval
+CUDA_VISIBLE_DEVICES=3 python classification/main_train.py --exp_name finetune --dataset sen12ms --label_split_dir splits --sensor_type s1s2 --simple_scheme --label_type multi_label --threshold 0.1 --model Moco --lr 0.001 --decay 1e-5 --batch_size 64 --num_workers 4 --data_size 1024 --epochs 300 --pt_name silvery-oath7-2rr3864e --pt_dir pretrained/moco --eval
  ```
 - `pt_name`: the name of the model (wandb run name)
 - `--eval`: remove this param if you want to skip evaluating after finishing the training 
-- `sensor_type`: s1, s2, s1s2 
+- `sensor_type`: s1, s2, s1s2
+- `use_fusion`: for s1 and s2, zero padding will be added to make 12 channels.
+- `dataset`: bigearthnet or sen12ms (default) 
 
 Evaluate trained models for classification (this is only if you downloaded the trained model)
 ```
-CUDA_VISIBLE_DEVICES=0 \  
 python test.py \  
   --config_file /home/single_DenseNet_RGB/logs/20201019_000519_arguments.txt \ 
   --data_dir /work/share/sen12ms \  
@@ -148,7 +144,7 @@ python test.py \
 Examples
 ```
 # example 1
-CUDA_VISIBLE_DEVICES=0 python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_model_best.pth --batch_size 64 --config_file /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_arguments.txt --num_workers 4 
+python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_model_best.pth --batch_size 64 --config_file /home/ubuntu/SEN12MS/pretrained/multi_label/multi_ResNet50_s1s2/20201002_075916_arguments.txt --num_workers 4 
 
 # example 2
 python classification/test.py --data_dir data/sen12ms/data --label_split_dir splits --checkpoint_pth /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824model_best.pth --batch_size 64 --config_file /scratch/crguest/SEN12MS/pretrained/multi_label/multi_ResNet50_s2/20201003_181824_arguments.txt --num_workers 4 
