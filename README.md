@@ -109,10 +109,10 @@ convert moco models to pytorch resnet50 format
 python classification/models/convert_moco_to_resnet50.py -n 3 -i pretrained/moco/sen12_crossaugment_epoch_1000.pth -o pretrained/moco
 
 # download the model from W&B and convert for 12 channels 
-python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/1srlc7jr -o pretrained/moco/ 
+python classification/models/convert_moco_to_resnet50.py -n 12 -i hpt4/xcthtqmn -o pretrained/moco/ 
 
 # rename file with more user-friendly name (TODO automate this)
-mv pretrained/moco/1srlc7jr_bb_converted.pth pretrained/moco/visionary-lake-62_bb_converted.pth
+mv pretrained/moco/1srlc7jr.pth pretrained/moco/visionary-lake-62.pth
 
 ```
 

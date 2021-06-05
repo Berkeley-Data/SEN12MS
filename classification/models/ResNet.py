@@ -90,13 +90,11 @@ class ResNet34(nn.Module):
 
         return logits
 
-
-
 class ResNet50(nn.Module):
-    def __init__(self, n_inputs = 12, numCls = 17):
+    def __init__(self, n_inputs = 12, numCls = 17, pretrained=False):
         super().__init__()
 
-        resnet = models.resnet50(pretrained=False)
+        resnet = models.resnet50(pretrained=pretrained)
 
         self.conv1 = nn.Conv2d(n_inputs, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.encoder = nn.Sequential(

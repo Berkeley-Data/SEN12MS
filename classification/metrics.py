@@ -9,7 +9,7 @@ import numpy as np
 import torch.nn.functional as F
 from sklearn.metrics import f1_score, precision_score, recall_score, fbeta_score, \
     classification_report, hamming_loss, accuracy_score, coverage_error, label_ranking_loss,\
-    label_ranking_average_precision_score, confusion_matrix, multilabel_confusion_matrix
+    label_ranking_average_precision_score, confusion_matrix, multilabel_confusion_matrix, average_precision_score
 
 
 
@@ -242,6 +242,14 @@ class LabelAvgPrec_score(nn.Module):
 
     def forward(self, predict_probs, true_labels):
         return label_ranking_average_precision_score(true_labels, predict_probs)
+
+class MeanAvgPrec_score(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, predict_probs, true_labels):
+        return average_precision_score(true_labels, predict_probs, average='macro')
 
 class calssification_report(nn.Module):
 

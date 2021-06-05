@@ -26,7 +26,10 @@ from models.DenseNet import DenseNet121, DenseNet161, DenseNet169, DenseNet201
 from metrics import MetricTracker, Precision_score, Recall_score, F1_score, \
     F2_score, Hamming_loss, Subset_accuracy, Accuracy_score, One_error, \
     Coverage_error, Ranking_loss, LabelAvgPrec_score, calssification_report, \
-    conf_mat_nor, get_AA, multi_conf_mat, OA_multi
+    conf_mat_nor, get_AA, multi_conf_mat, OA_multi, MeanAvgPrec_score
+
+# [todo] temporarily importing directly. Should move under metric.py
+from sklearn.metrics import average_precision_score
 
 import wandb
 
@@ -36,7 +39,7 @@ model_choices = ['VGG16', 'VGG19',
                  'Supervised','ResNet101','ResNet152', 'Supervised_1x1',
                  'DenseNet121','DenseNet161','DenseNet169','DenseNet201', 'Moco', 'Moco_1x1', 'Moco_1x1RND']
 label_choices = ['multi_label', 'single_label']
-sensor_choices = ['s1', 's2', 's1s2']
+sensor_choices = ['s1', 's2', 's1s2', 'rgb']
 
 # ----------------------- define and parse arguments --------------------------
 parser = argparse.ArgumentParser()
@@ -64,8 +67,8 @@ parser.add_argument('--sensor_type', type=str, choices = sensor_choices,
 #                     help='use sentinel-2 bands')
 # parser.add_argument('--use_s1', action='store_true', default=False,
 #                     help='use sentinel-1 data')
-parser.add_argument('--use_RGB', action='store_true', default=False,
-                    help='use sentinel-2 RGB bands')
+# parser.add_argument('--use_RGB', action='store_true', default=False,
+#                     help='use sentinel-2 RGB bands')
 parser.add_argument('--simple_scheme', action='store_true', default=False,
                     help='use IGBP simplified scheme; otherwise: IGBP original scheme')
 parser.add_argument('--label_type', type=str, choices = label_choices,
@@ -78,6 +81,8 @@ parser.add_argument('--threshold', type=float, default=0.1,
                     for single_label threshold would be ignored')
 parser.add_argument('--eval', action='store_true', default=False,
                     help='evaluate against test set')
+parser.add_argument('--resnet_pretrained', action='store_true', default=False,
+                    help='use resnet pretrained')
 
 # network
 parser.add_argument('--model', type=str, choices = model_choices,
@@ -166,8 +171,9 @@ def main():
 # ----------------------------------- data
     # define mean/std of the training set (for data normalization)
     label_type = args.label_type
-    use_s1 = (args.sensor_type == 's1') | (args.sensor_type == 's1s2')
-    use_s2 = (args.sensor_type == 's2') | (args.sensor_type == 's1s2')
+    use_s1 = 's1' in args.sensor_type
+    use_s2 = 's2' in args.sensor_type
+    use_rgb = 'rgb' in args.sensor_type
 
     dataset = args.dataset
     data_dir = os.path.join("data", dataset, "data")
@@ -204,40 +210,40 @@ def main():
         train_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
-                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                                 IGBP_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         val_dataGen = SEN12MS(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
-                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                               IGBP_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         if args.eval:
             test_dataGen = SEN12MS(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
-                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                                    IGBP_s=args.simple_scheme, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
     else:
         # Assume bigearthnet
         train_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                 imgTransform=imgTransform,
                                 label_type=label_type, threshold=args.threshold, subset="train",
-                                use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                                 CLC_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         val_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                               imgTransform=imgTransform,
                               label_type=label_type, threshold=args.threshold, subset="val",
-                              use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                              use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                               CLC_s=args.simple_scheme, data_size=args.data_size, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
 
         if args.eval:
             test_dataGen = BigEarthNet(data_dir, args.label_split_dir,
                                    imgTransform=imgTransform,
                                    label_type=label_type, threshold=args.threshold, subset="test",
-                                   use_s1=use_s1, use_s2=use_s2, use_RGB=args.use_RGB,
+                                   use_s1=use_s1, use_s2=use_s2, use_RGB=use_rgb,
                                    CLC_s=args.simple_scheme, sensor_type=args.sensor_type, use_fusion=args.use_fusion)
     
     # number of input channels
@@ -302,7 +308,7 @@ def main():
     elif args.model == 'VGG19':
         model = VGG19(n_inputs, numCls)
     elif args.model == 'Supervised':
-        model = ResNet50(n_inputs, numCls)
+        model = ResNet50(n_inputs, numCls, args.resnet_pretrained)
     elif args.model == 'Supervised_1x1':
         model = ResNet50_1x1(n_inputs, numCls)
     elif args.model == 'ResNet101':
@@ -437,6 +443,7 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
     coverage_err_ = Coverage_error()
     rank_loss_ = Ranking_loss()
     labelAvgPrec_score_ = LabelAvgPrec_score()
+    meanAvgPrec_score = MeanAvgPrec_score()
 
     calssification_report_ = calssification_report(ORG_LABELS)
 
@@ -513,6 +520,9 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
     rank_loss = rank_loss_(predicted_probs, y_true)
     labelAvgPrec = labelAvgPrec_score_(predicted_probs, y_true)
 
+    # todo https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html#sklearn.metrics.average_precision_score
+    # mAP = average_precision_score(y_true, predicted_probs, average='macro')
+
     cls_report = calssification_report_(y_predicted, y_true)
 
     if label_type == 'multi_label':
@@ -521,7 +531,13 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
         oa = OA_multi(y_predicted, y_true)
         # this oa can be Jaccard index
 
+        mAP = meanAvgPrec_score(predicted_probs, y_true)
+        print("=#####-----------")
+        print(mAP)
+        print("=#####-------")
+
         info = {
+            "mAP": mAP,
             "macroPrec": macro_prec,
             "microPrec": micro_prec,
             "samplePrec": sample_prec,
@@ -581,7 +597,7 @@ def eval(test_data_loader, model, label_type, numCls, use_cuda, ORG_LABELS):
             "AverageAcc": aa}
 
     wandb.run.summary.update(info)
-    print(model)
+    # print(model)
     print("saving metrics...")
     # pkl.dump(info, open("test_scores.pkl", "wb"))
 
